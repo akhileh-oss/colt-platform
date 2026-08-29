@@ -16,16 +16,18 @@ required.
 
 ## Status
 
-**Milestone 00 — Repository Bootstrap: complete.**
+**Milestone 01 — Local Infrastructure: complete.**
 
-This repository currently contains the workspace layout, toolchain, quality gates and
-documentation skeleton. It does **not** yet contain application code — no FastAPI app, no database
-schema, no agents. Those arrive in the milestones below.
+`make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
+MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
+
+There is still **no application code**: no FastAPI app, no database schema, no agents. Those arrive
+in the milestones below.
 
 | Milestone | Scope                                 | Status      |
 | --------- | ------------------------------------- | ----------- |
 | 00        | Repository bootstrap                  | ✅ Complete |
-| 01        | Local infrastructure (Docker Compose) | Not started |
+| 01        | Local infrastructure (Docker Compose) | ✅ Complete |
 | 02        | FastAPI foundation                    | Not started |
 | 03        | Next.js foundation                    | Not started |
 | 04        | Authentication + multi-tenancy        | Not started |
@@ -60,11 +62,33 @@ make install              # uv sync + pnpm install
 make check                # lint, typecheck, test, security
 ```
 
-`make dev` starts the full local environment, and lands in Milestone 01. Until then it exits with a
-message naming the milestone that delivers it — targets never silently pretend to succeed
-(`CLAUDE.md` §0.4).
+```bash
+make dev                  # start the local stack, then verify it
+```
+
+Cold start takes about 30 seconds. `make dev` validates prerequisites, refuses to run if any
+outbound side-effect flag is enabled (`CLAUDE.md` §6.4), starts the containers, provisions the
+MinIO bucket, health-checks every service, and prints the local URLs. Targets belonging to a later
+milestone exit with a message naming it rather than silently pretending to succeed (§0.4).
 
 Run `make help` to list every target.
+
+### Local services
+
+| Service                     | URL                                          | Credentials                 |
+| --------------------------- | -------------------------------------------- | --------------------------- |
+| Temporal UI                 | http://localhost:8080                        | —                           |
+| Mailpit (all outbound mail) | http://localhost:8025                        | —                           |
+| MinIO console               | http://localhost:9001                        | `minioadmin` / `minioadmin` |
+| Keycloak                    | http://localhost:8081                        | `admin` / `admin`           |
+| Postgres                    | `postgresql://colt:colt@localhost:5432/colt` | `colt` / `colt`             |
+| Redis                       | `redis://localhost:6379/0`                   | —                           |
+| OTLP gRPC / HTTP            | `localhost:4317` / `localhost:4318`          | —                           |
+| Web                         | http://localhost:3000                        | Milestone 03                |
+| API                         | http://localhost:8000                        | Milestone 02                |
+
+Those credentials are local-only development defaults, deliberately weak and deliberately
+committed. They exist nowhere but your machine.
 
 ---
 

@@ -11,7 +11,7 @@ SHELL := /bin/bash
 UV  ?= uv
 PNPM ?= pnpm
 
-.PHONY: help install dev down logs migrate migration seed \
+.PHONY: help install dev down logs health migrate migration seed \
         format lint typecheck test test-unit test-integration test-e2e \
         test-workflows eval security build check clean
 
@@ -30,13 +30,16 @@ install: ## Install Python and Node dependencies
 # Local infrastructure (Milestone 01)
 # -----------------------------------------------------------------------------
 dev: ## Start the full local environment
-	@echo "NOT AVAILABLE — the local Docker Compose environment is delivered in Milestone 01."; exit 1
+	@scripts/dev-up.sh
 
-down: ## Stop the local environment
-	@echo "NOT AVAILABLE — the local Docker Compose environment is delivered in Milestone 01."; exit 1
+down: ## Stop the local environment (volumes are preserved)
+	docker compose down
 
 logs: ## Tail local service logs
-	@echo "NOT AVAILABLE — the local Docker Compose environment is delivered in Milestone 01."; exit 1
+	docker compose logs -f
+
+health: ## Verify every local service is serving
+	@scripts/dev-health.sh
 
 
 # -----------------------------------------------------------------------------

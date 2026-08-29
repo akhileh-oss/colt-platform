@@ -1,0 +1,162 @@
+# Colt — AI Revenue Operating System
+
+Colt continuously discovers high-value prospects, researches them against verifiable evidence,
+detects why-now buying signals, qualifies and prioritises opportunities, generates evidence-backed
+outreach, orchestrates conversations across approved channels, and learns from revenue outcomes.
+
+It is a **deterministic software platform with AI reasoning components** — not an autonomous agent
+swarm. Software owns sequencing, state and safety; models are used where judgement is genuinely
+required.
+
+> **[`CLAUDE.md`](./CLAUDE.md) is the authoritative engineering specification.** It governs
+> architecture, standards, milestones and acceptance criteria. Where this README and `CLAUDE.md`
+> disagree, `CLAUDE.md` wins.
+
+---
+
+## Status
+
+**Milestone 00 — Repository Bootstrap: complete.**
+
+This repository currently contains the workspace layout, toolchain, quality gates and
+documentation skeleton. It does **not** yet contain application code — no FastAPI app, no database
+schema, no agents. Those arrive in the milestones below.
+
+| Milestone | Scope                                 | Status      |
+| --------- | ------------------------------------- | ----------- |
+| 00        | Repository bootstrap                  | ✅ Complete |
+| 01        | Local infrastructure (Docker Compose) | Not started |
+| 02        | FastAPI foundation                    | Not started |
+| 03        | Next.js foundation                    | Not started |
+| 04        | Authentication + multi-tenancy        | Not started |
+| 05        | Database + domain foundation          | Not started |
+| 06–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
+
+---
+
+## Requirements
+
+| Tool                             | Version | Purpose                                  |
+| -------------------------------- | ------- | ---------------------------------------- |
+| Python                           | ≥ 3.12  | Backend, AI, workflows                   |
+| [uv](https://docs.astral.sh/uv/) | ≥ 0.8   | Python dependency + workspace management |
+| Node.js                          | ≥ 22    | Frontend toolchain                       |
+| [pnpm](https://pnpm.io/)         | 10.x    | Node workspace management                |
+| Docker + Compose                 | recent  | Local infrastructure (from Milestone 01) |
+| GNU Make                         | ≥ 4     | Developer entry points                   |
+
+`uv` provisions the correct Python automatically — a system Python 3.12 is not required.
+
+---
+
+## Getting started
+
+```bash
+git clone git@github.com:akhileh-oss/colt-platform.git
+cd colt-platform
+
+cp .env.example .env      # placeholders only; never commit .env
+make install              # uv sync + pnpm install
+make check                # lint, typecheck, test, security
+```
+
+`make dev` starts the full local environment, and lands in Milestone 01. Until then it exits with a
+message naming the milestone that delivers it — targets never silently pretend to succeed
+(`CLAUDE.md` §0.4).
+
+Run `make help` to list every target.
+
+---
+
+## Repository layout
+
+```text
+apps/
+  api/                    FastAPI application — API boundary and composition root
+  web/                    Next.js operator console
+packages/
+  python/
+    colt-domain/          Entities, value objects, invariants, deterministic rules
+    colt-application/     Use cases and application services
+    colt-agents/          Agent definitions, prompts, runtime integration
+    colt-workflows/       Temporal workflows and activities
+    colt-integrations/    Provider adapters
+    colt-db/              SQLAlchemy models, repositories, migrations
+    colt-policy/          Authorization and business-safety policy engine
+    colt-observability/   Logging, tracing, metrics helpers
+    colt-ai/              AI gateway, model routing, usage accounting
+  typescript/
+    ui/                   Shared UI primitives
+    api-client/           Typed API client generated from OpenAPI
+infrastructure/           Docker, Terraform, per-environment configuration
+docs/                     Architecture, decisions (ADRs), security, operations
+prompts/                  Versioned, source-controlled agent prompts
+tests/                    unit, integration, e2e, workflows, security, evals
+scripts/                  Developer and CI scripts
+```
+
+### Layering
+
+Dependencies point inward (`CLAUDE.md` §5). The domain package depends on nothing and must never
+import FastAPI, SQLAlchemy, the Anthropic SDK, the Temporal SDK, Redis or any provider module.
+This is enforced structurally by the workspace dependency graph:
+
+```text
+domain  ←  policy  ←  application  ←  workflows
+   ↑                      ↑              ↑
+   └──  db, integrations, agents  ────────┘
+```
+
+---
+
+## Commands
+
+| Command          | Does                                              |
+| ---------------- | ------------------------------------------------- |
+| `make install`   | Install Python and Node dependencies              |
+| `make format`    | Format Python (ruff) and TypeScript (prettier)    |
+| `make lint`      | Lint and check formatting across both stacks      |
+| `make typecheck` | mypy `--strict` and TypeScript project references |
+| `make test`      | Unit tests (pytest + vitest)                      |
+| `make security`  | `pip-audit`, `pnpm audit`, and secret scanning    |
+| `make check`     | Everything above — the CI gate                    |
+| `make clean`     | Remove caches and build artifacts                 |
+
+---
+
+## Engineering rules that bite early
+
+- **No secrets in the repository.** `.env` is git-ignored; `.env.example` holds placeholders only.
+  `make security` scans every tracked file and fails on a new finding (`CLAUDE.md` §7.2, §40).
+- **Evidence before assertions.** Any factual claim used in outreach must trace to a stored source
+  with a URL, observation date and confidence. Never invent a source (`CLAUDE.md` §2.6, §20).
+- **Claude never touches the database or the network directly.** Reasoning goes through typed
+  tools, a policy check, then application services (`CLAUDE.md` §2.3, §2.4).
+- **Multi-tenancy from day one.** Every tenant-owned record carries `organization_id`, and a
+  client-supplied organization ID is never trusted (`CLAUDE.md` §2.8, §27).
+- **Retrieved content is untrusted data**, never instructions — web pages, emails and CRM notes can
+  carry prompt injection (`CLAUDE.md` §41).
+- **Architecture changes need an ADR.** See [`docs/decisions/`](./docs/decisions/) (`CLAUDE.md` §64).
+
+---
+
+## Documentation
+
+| Document                                                                                     | Covers                          |
+| -------------------------------------------------------------------------------------------- | ------------------------------- |
+| [`CLAUDE.md`](./CLAUDE.md)                                                                   | The authoritative specification |
+| [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md)                   | System shape and layering       |
+| [`docs/architecture/DOMAIN_MODEL.md`](./docs/architecture/DOMAIN_MODEL.md)                   | Entities and state machines     |
+| [`docs/architecture/AGENT_ARCHITECTURE.md`](./docs/architecture/AGENT_ARCHITECTURE.md)       | Agents, runtime, tools          |
+| [`docs/architecture/WORKFLOW_ARCHITECTURE.md`](./docs/architecture/WORKFLOW_ARCHITECTURE.md) | Temporal orchestration          |
+| [`docs/security/SECURITY_MODEL.md`](./docs/security/SECURITY_MODEL.md)                       | Threat model and controls       |
+| [`docs/operations/RUNBOOK.md`](./docs/operations/RUNBOOK.md)                                 | Day-to-day operations           |
+| [`docs/operations/DEPLOYMENT.md`](./docs/operations/DEPLOYMENT.md)                           | Release and rollback            |
+| [`docs/operations/INCIDENTS.md`](./docs/operations/INCIDENTS.md)                             | Incident response               |
+| [`docs/decisions/`](./docs/decisions/)                                                       | Architecture Decision Records   |
+
+---
+
+## Licence
+
+Proprietary. © Colt & Co.

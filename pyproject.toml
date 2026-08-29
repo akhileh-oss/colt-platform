@@ -1,0 +1,137 @@
+[project]
+name = "colt"
+version = "0.1.0"
+description = "Colt — AI Revenue Operating System"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "colt-api",
+    "colt-domain",
+    "colt-application",
+    "colt-db",
+    "colt-policy",
+    "colt-observability",
+    "colt-ai",
+    "colt-agents",
+    "colt-integrations",
+    "colt-workflows",
+]
+
+# The repository root is a workspace container, not a distributable package.
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/api", "packages/python/*"]
+
+[tool.uv.sources]
+colt-api = { workspace = true }
+colt-domain = { workspace = true }
+colt-application = { workspace = true }
+colt-db = { workspace = true }
+colt-policy = { workspace = true }
+colt-observability = { workspace = true }
+colt-ai = { workspace = true }
+colt-agents = { workspace = true }
+colt-integrations = { workspace = true }
+colt-workflows = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.2",
+    "pytest-cov>=7.0",
+    "pip-audit>=2.9",
+    "detect-secrets>=1.5",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — lint and format (CLAUDE.md §8.1)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["apps/api/src", "packages/python/*/src", "tests"]
+# Ruff formats Python inside Markdown fences. CLAUDE.md and the ADRs are specification
+# documents whose code blocks are illustrative and must stay verbatim.
+extend-exclude = ["*.md", ".venv", "node_modules"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "N",         # pep8-naming
+    "UP",        # pyupgrade
+    "B",         # flake8-bugbear
+    "C4",        # flake8-comprehensions
+    "SIM",       # flake8-simplify
+    "TID",       # flake8-tidy-imports
+    "PTH",       # flake8-use-pathlib
+    "RUF",       # ruff-specific
+    "ASYNC",     # flake8-async
+    "S",         # flake8-bandit (security)
+    "ANN",       # flake8-annotations (CLAUDE.md §8.1: annotate everywhere practical)
+    "T20",       # flake8-print — no stray print() in production code
+    "BLE",       # flake8-blind-except — CLAUDE.md §8.2 forbids broad excepts
+]
+ignore = [
+    "ANN401",    # Allow `Any` where explicitly justified (CLAUDE.md §8.2).
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may assert, use fixtures with shadowed names, and skip return annotations.
+"**/tests/**/*.py" = ["S101", "ANN201", "ANN001"]
+"tests/**/*.py" = ["S101", "ANN201", "ANN001"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "colt_api", "colt_domain", "colt_application", "colt_db", "colt_policy",
+    "colt_observability", "colt_ai", "colt_agents", "colt_integrations", "colt_workflows",
+]
+
+# ---------------------------------------------------------------------------
+# mypy — strict typing (CLAUDE.md §8.1)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+disallow_any_unimported = true
+show_error_codes = true
+pretty = true
+files = ["apps/api/src", "packages/python", "tests"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests", "packages/python", "apps/api"]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires local infrastructure (Postgres, Redis, Temporal, MinIO).",
+    "e2e: drives the running application end to end.",
+    "workflows: exercises Temporal workflows via the test environment.",
+    "evals: AI evaluation suite; may call a model provider.",
+    "security: asserts a security or tenant-isolation invariant.",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["apps/api/src", "packages/python"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

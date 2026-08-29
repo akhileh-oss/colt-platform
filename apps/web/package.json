@@ -1,0 +1,7 @@
+{
+  "name": "@colt/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Colt web application (Next.js).",
+  "type": "module"
+}

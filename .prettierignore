@@ -1,0 +1,19 @@
+# The authoritative specification — committed verbatim, never reformatted.
+CLAUDE.md
+
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+uv.lock
+
+# Python toolchain artifacts
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Generated from the FastAPI OpenAPI schema (CLAUDE.md §25.3)
+packages/typescript/api-client/src/generated

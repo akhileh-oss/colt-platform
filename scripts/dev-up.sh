@@ -50,9 +50,10 @@ scripts/dev-health.sh
 step "Not yet running"
 cat <<'PENDING'
   database migrations   Milestone 05
-  API (FastAPI)         Milestone 02
   Temporal workers      Milestone 06
   Web (Next.js)         Milestone 03
+
+  The API is built but not containerised: run it alongside this stack with `make api`.
 PENDING
 
 # --- 7. Expose local service URLs (§6.3) --------------------------------------

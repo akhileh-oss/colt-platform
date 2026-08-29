@@ -19,3 +19,4 @@ Deviating from `CLAUDE.md` without an ADR is not permitted (`CLAUDE.md` §0.1).
 | ---------------------------------------------------- | ------------------------------------------------------------------- | -------- |
 | [0001](./ADR-0001-adopt-the-colt-reference-stack.md) | Adopt the Colt reference stack                                      | Accepted |
 | [0002](./ADR-0002-separate-platform-repository.md)   | Build the platform in a repository separate from the marketing site | Accepted |
+| [0003](./ADR-0003-shared-settings-package.md)        | Typed settings live in a shared `colt-config` package               | Accepted |

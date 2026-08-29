@@ -16,19 +16,24 @@ required.
 
 ## Status
 
-**Milestone 01 — Local Infrastructure: complete.**
+**Milestone 02 — FastAPI Foundation: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
+`make api` runs the API on http://localhost:8000.
 
-There is still **no application code**: no FastAPI app, no database schema, no agents. Those arrive
-in the milestones below.
+The API has versioned routing, typed settings, structured JSON logging with automatic redaction,
+request IDs on every response and error, the shared error envelope, liveness and readiness probes,
+and a generated OpenAPI contract.
+
+There is still **no database schema, no domain model and no agents** — those arrive in the
+milestones below, and `/ready` reports no dependencies because the API has none yet.
 
 | Milestone | Scope                                 | Status      |
 | --------- | ------------------------------------- | ----------- |
 | 00        | Repository bootstrap                  | ✅ Complete |
 | 01        | Local infrastructure (Docker Compose) | ✅ Complete |
-| 02        | FastAPI foundation                    | Not started |
+| 02        | FastAPI foundation                    | ✅ Complete |
 | 03        | Next.js foundation                    | Not started |
 | 04        | Authentication + multi-tenancy        | Not started |
 | 05        | Database + domain foundation          | Not started |
@@ -64,6 +69,7 @@ make check                # lint, typecheck, test, security
 
 ```bash
 make dev                  # start the local stack, then verify it
+make api                  # run the API on http://localhost:8000
 ```
 
 Cold start takes about 30 seconds. `make dev` validates prerequisites, refuses to run if any
@@ -85,7 +91,8 @@ Run `make help` to list every target.
 | Redis                       | `redis://localhost:6379/0`                   | —                           |
 | OTLP gRPC / HTTP            | `localhost:4317` / `localhost:4318`          | —                           |
 | Web                         | http://localhost:3000                        | Milestone 03                |
-| API                         | http://localhost:8000                        | Milestone 02                |
+| API                         | http://localhost:8000                        | `make api`                  |
+| API docs                    | http://localhost:8000/docs                   | `make api`                  |
 
 Those credentials are local-only development defaults, deliberately weak and deliberately
 committed. They exist nowhere but your machine.

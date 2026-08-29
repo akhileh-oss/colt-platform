@@ -1,0 +1,205 @@
+# =============================================================================
+# Colt — local development infrastructure (CLAUDE.md §6.1)
+#
+# Local development performs NO real external side effects (§6.4): mail is captured by
+# Mailpit, object storage is MinIO, and identity is a local Keycloak realm. Nothing here
+# reaches a third-party service.
+#
+# The credentials below are LOCAL-ONLY development defaults. They are deliberately weak and
+# deliberately committed. Never reuse them anywhere else, and never point a local .env at a
+# real environment (§7.1).
+#
+# Application services (api, web, worker) join this file in Milestones 02, 03 and 06.
+# =============================================================================
+
+name: colt
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — the system of record (§9.1). Hosts both the Colt application
+  # database and Temporal's own databases.
+  # ---------------------------------------------------------------------------
+  postgres:
+    <<: *restart
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: colt
+      POSTGRES_PASSWORD: colt
+      POSTGRES_DB: colt
+      # Temporal's auto-setup creates its databases as this superuser.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colt -d colt"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Redis — cache, locks, ephemeral coordination only. Never business truth (§2.2).
+  # ---------------------------------------------------------------------------
+  redis:
+    <<: *restart
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # Temporal — durable workflow orchestration (§3.3, §24).
+  # ---------------------------------------------------------------------------
+  temporal:
+    <<: *restart
+    image: temporalio/auto-setup:1.29.3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: colt
+      POSTGRES_PWD: colt
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"
+    healthcheck:
+      # Temporal binds the frontend to the container IP, not loopback, so probe that address.
+      test: ["CMD-SHELL", "temporal operator cluster health --address $$(hostname -i):7233"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  temporal-ui:
+    <<: *restart
+    image: temporalio/ui:2.53.3
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "${TEMPORAL_UI_PORT:-8080}:8080"
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage for raw research documents (§34).
+  # ---------------------------------------------------------------------------
+  minio:
+    <<: *restart
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # Creates the buckets the application expects, then exits. Idempotent.
+  # Behind a profile so it stays out of `docker compose up --wait`, which treats a
+  # deliberately-exiting container as a failure. `make dev` runs it explicitly.
+  minio-init:
+    profiles: ["init"]
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mc alias set local http://minio:9000 minioadmin minioadmin
+        mc mb --ignore-existing local/colt-research
+        echo "minio-init: buckets ready"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Mailpit — captures ALL outbound mail locally. Nothing leaves the machine (§6.4, §29).
+  # ---------------------------------------------------------------------------
+  mailpit:
+    <<: *restart
+    image: axllent/mailpit:latest
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_MAX_MESSAGES: 5000
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  # ---------------------------------------------------------------------------
+  # Keycloak — local OIDC identity provider (§26.1). Dev mode, in-memory store.
+  # ---------------------------------------------------------------------------
+  keycloak:
+    <<: *restart
+    image: quay.io/keycloak/keycloak:26.7.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./infrastructure/docker/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # The image ships no curl or wget, so probe the management port over bash's /dev/tcp.
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\"status\": \"UP\"' <&3"
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector — traces, metrics and logs (§35).
+  # The image is distroless (no shell), so it carries no container healthcheck;
+  # scripts/dev-health.sh probes its health_check extension from the host instead.
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    <<: *restart
+    image: otel/opentelemetry-collector-contrib:0.159.0
+    command: ["--config=/etc/otel/collector-config.yaml"]
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+      - "${OTEL_HEALTH_PORT:-13133}:13133"
+    volumes:
+      - ./infrastructure/docker/otel/collector-config.yaml:/etc/otel/collector-config.yaml:ro
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

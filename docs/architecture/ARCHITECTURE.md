@@ -29,9 +29,15 @@ Dependencies point inward:
 Presentation → API/UI → Application → Domain → Ports → Infrastructure
 ```
 
-The domain layer imports no framework, ORM, SDK or provider module (`CLAUDE.md` §5.3). The
-workspace dependency graph in each `pyproject.toml` encodes this, so a violation breaks resolution
-rather than merely breaking convention.
+The domain layer imports no framework, ORM, SDK or provider module (`CLAUDE.md` §5.3).
+
+Two mechanisms carry this, and it is worth being precise about what each does. The workspace
+dependency graph in each `pyproject.toml` **declares** the shape — it is the documentation of
+intent — but it does not enforce it: `uv` installs every workspace package into a single shared
+virtualenv, so at runtime any package can import anything present. Enforcement therefore comes
+from `packages/python/colt-domain/ruff.toml`, which bans the forbidden modules outright via
+`flake8-tidy-imports`. A forbidden import in the domain fails `make lint`, whether or not it is
+used.
 
 ## 3. Package map
 

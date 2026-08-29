@@ -1,0 +1,14 @@
+# The domain layer is the innermost ring: it must import no framework, ORM, driver or SDK
+# (CLAUDE.md §5.3, §8.2). The uv workspace shares one virtualenv, so package dependencies
+# alone cannot enforce this — these bans are the enforcement.
+extend = "../../../pyproject.toml"
+
+[lint.flake8-tidy-imports.banned-api]
+"fastapi".msg = "Domain must not import FastAPI (CLAUDE.md §5.3). Keep HTTP concerns in colt-api."
+"sqlalchemy".msg = "Domain must not import SQLAlchemy (CLAUDE.md §5.3). Persistence belongs in colt-db."
+"anthropic".msg = "Domain must not import the Anthropic SDK (CLAUDE.md §5.3). Model access belongs in colt-ai."
+"temporalio".msg = "Domain must not import the Temporal SDK (CLAUDE.md §5.3). Orchestration belongs in colt-workflows."
+"redis".msg = "Domain must not import Redis (CLAUDE.md §5.3)."
+"httpx".msg = "Domain must not perform network calls (CLAUDE.md §8.2). Use a port implemented in colt-integrations."
+"requests".msg = "Domain must not perform network calls (CLAUDE.md §8.2). Use a port implemented in colt-integrations."
+"boto3".msg = "Domain must not import cloud SDKs (CLAUDE.md §5.3). Storage belongs behind a port."

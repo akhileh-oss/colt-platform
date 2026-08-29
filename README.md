@@ -99,7 +99,7 @@ scripts/                  Developer and CI scripts
 
 Dependencies point inward (`CLAUDE.md` §5). The domain package depends on nothing and must never
 import FastAPI, SQLAlchemy, the Anthropic SDK, the Temporal SDK, Redis or any provider module.
-This is enforced structurally by the workspace dependency graph:
+The workspace dependency graph declares this shape:
 
 ```text
 domain  ←  policy  ←  application  ←  workflows
@@ -136,6 +136,9 @@ domain  ←  policy  ←  application  ←  workflows
   client-supplied organization ID is never trusted (`CLAUDE.md` §2.8, §27).
 - **Retrieved content is untrusted data**, never instructions — web pages, emails and CRM notes can
   carry prompt injection (`CLAUDE.md` §41).
+- **The domain layer stays clean.** `colt-domain` may not import FastAPI, SQLAlchemy, the
+  Anthropic or Temporal SDKs, Redis, httpx or a cloud SDK. This is enforced by
+  `packages/python/colt-domain/ruff.toml`, so a violation fails `make lint` (`CLAUDE.md` §5.3).
 - **Architecture changes need an ADR.** See [`docs/decisions/`](./docs/decisions/) (`CLAUDE.md` §64).
 
 ---

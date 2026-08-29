@@ -11,7 +11,7 @@ SHELL := /bin/bash
 UV  ?= uv
 PNPM ?= pnpm
 
-.PHONY: help install dev down logs health migrate migration seed \
+.PHONY: help install dev down logs health api migrate migration seed \
         format lint typecheck test test-unit test-integration test-e2e \
         test-workflows eval security build check clean
 
@@ -40,6 +40,9 @@ logs: ## Tail local service logs
 
 health: ## Verify every local service is serving
 	@scripts/dev-health.sh
+
+api: ## Run the API locally with reload (requires `make dev` for infrastructure)
+	$(UV) run python -m colt_api
 
 
 # -----------------------------------------------------------------------------

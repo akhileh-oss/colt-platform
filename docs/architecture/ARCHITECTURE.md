@@ -56,7 +56,28 @@ used.
 
 ## 4. Request path
 
-_To be documented in Milestone 02._
+```text
+client
+  → RequestContextMiddleware      assign/validate X-Request-ID, bind log context
+  → AccessLogMiddleware           one structured line per request
+  → CORSMiddleware                origin allow-list
+  → SecurityHeadersMiddleware     nosniff, DENY, no-referrer, COOP, Permissions-Policy
+  → RequestSizeLimitMiddleware    reject oversized bodies
+  → router (/api/v1 or probes)
+  → dependency injection          settings today; principal and session in 04 and 05
+  → endpoint
+```
+
+Middleware is registered in reverse: the request context is added last so it is outermost and
+every inner layer can read the request ID.
+
+Failures leave through the handlers in `colt_api.errors`, which render the single §25.4 envelope.
+The handler for an unhandled `Exception` runs inside Starlette's `ServerErrorMiddleware`, outside
+our stack, so it resolves the request ID from the request scope rather than the logging context —
+otherwise 500s, the responses that most need tracing, would carry no ID.
+
+Readiness is a registry (`colt_api.readiness`) rather than a fixed list, so Milestone 05 adds the
+database check and Milestone 06 Temporal with one call each.
 
 ## 5. Data flow: the core product loop
 

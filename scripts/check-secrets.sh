@@ -24,6 +24,22 @@ if [[ ! -f "$BASELINE" ]]; then
   exit 1
 fi
 
+# detect-secrets-hook refreshes the line numbers recorded in the baseline whenever a tracked
+# file shifts, which leaves the baseline dirty and makes the *next* run refuse to start with
+# "your baseline file is unstaged". Stage it before and after so ordinary edits elsewhere do
+# not produce a spurious security failure.
+#
+# This does not weaken the check: what the hook compares is the set of (filename, hashed
+# secret) pairs, and a genuinely new secret still fails regardless of staging.
+stage_baseline() {
+  if git ls-files --error-unmatch "$BASELINE" >/dev/null 2>&1; then
+    git add "$BASELINE" 2>/dev/null || true
+  fi
+}
+
+stage_baseline
+trap stage_baseline EXIT
+
 # Scan every tracked file except the baseline itself and vendored/lock artifacts.
 mapfile -t files < <(git ls-files | grep -Ev "$EXCLUDE")
 

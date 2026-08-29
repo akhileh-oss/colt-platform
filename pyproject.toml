@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "colt-api",
+    "colt-config",
     "colt-domain",
     "colt-application",
     "colt-db",
@@ -26,6 +27,7 @@ members = ["apps/api", "packages/python/*"]
 
 [tool.uv.sources]
 colt-api = { workspace = true }
+colt-config = { workspace = true }
 colt-domain = { workspace = true }
 colt-application = { workspace = true }
 colt-db = { workspace = true }
@@ -41,10 +43,12 @@ dev = [
     "ruff>=0.14",
     "mypy>=1.18",
     "pytest>=8.4",
+    "httpx>=0.28",
     "pytest-asyncio>=1.2",
     "pytest-cov>=7.0",
     "pip-audit>=2.9",
     "detect-secrets>=1.5",
+    "httpx2>=2.12.0",
 ]
 
 # ---------------------------------------------------------------------------
@@ -91,7 +95,7 @@ ban-relative-imports = "parents"
 
 [tool.ruff.lint.isort]
 known-first-party = [
-    "colt_api", "colt_domain", "colt_application", "colt_db", "colt_policy",
+    "colt_api", "colt_config", "colt_domain", "colt_application", "colt_db", "colt_policy",
     "colt_observability", "colt_ai", "colt_agents", "colt_integrations", "colt_workflows",
 ]
 

@@ -5,6 +5,9 @@ description = "Colt FastAPI application — the HTTP API boundary and compositio
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.121",
+    "uvicorn[standard]>=0.38",
+    "colt-config",
     "colt-domain",
     "colt-application",
     "colt-db",

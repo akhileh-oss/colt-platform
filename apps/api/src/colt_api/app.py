@@ -11,6 +11,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from colt_api.errors import ErrorResponse, register_exception_handlers
 from colt_api.middleware import (
@@ -19,9 +20,11 @@ from colt_api.middleware import (
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from colt_api.readiness import readiness_registry
 from colt_api.routers import health
 from colt_api.routers.v1 import router as v1
 from colt_config import Settings, get_settings
+from colt_db import get_default_engine
 from colt_observability import configure_logging, get_logger
 
 logger = get_logger(__name__)
@@ -42,15 +45,31 @@ def _build_lifespan(
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        # Startup. Milestones 05 and 06 open the database pool and Temporal client here and
-        # register their readiness checks.
+        # Startup. Milestone 06 registers the Temporal client here and its own readiness check.
         logger.info(
             "api starting",
             extra={"operation": "startup", "environment": settings.app.env.value},
         )
+
+        engine = get_default_engine()
+
+        async def _database_ready() -> str | None:
+            try:
+                async with engine.connect() as conn:
+                    await conn.execute(text("SELECT 1"))
+            except Exception as exc:  # noqa: BLE001 - a failing dependency must report
+                # itself to the probe, not crash it (same pattern as colt_api.readiness).
+                return f"{type(exc).__name__}: {exc}"
+            return None
+
+        readiness_registry.register("database", _database_ready)
+
         yield
-        # Shutdown: stop accepting work, then release resources (CLAUDE.md §58). Pools and
-        # clients are closed here as they are introduced.
+
+        # Shutdown: stop accepting work, then release resources (CLAUDE.md §58). Temporal's
+        # client and worker are closed here too, from Milestone 06.
+        await engine.dispose()
+        readiness_registry.clear()
         logger.info("api stopping", extra={"operation": "shutdown"})
 
     return lifespan

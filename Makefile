@@ -55,13 +55,13 @@ web: ## Run the web app locally with reload (requires `make dev` and `make api`)
 # Database (Milestone 05)
 # -----------------------------------------------------------------------------
 migrate: ## Apply Alembic migrations
-	@echo "NOT AVAILABLE — the database schema and Alembic migrations is delivered in Milestone 05."; exit 1
+	cd packages/python/colt-db && $(UV) run alembic upgrade head
 
-migration: ## Create a new Alembic revision
-	@echo "NOT AVAILABLE — the database schema and Alembic migrations is delivered in Milestone 05."; exit 1
+migration: ## Create a new Alembic revision (usage: make migration name="add leads table")
+	cd packages/python/colt-db && $(UV) run alembic revision --autogenerate -m "$(name)"
 
-seed: ## Load development seed data
-	@echo "NOT AVAILABLE — seed data is delivered in Milestone 05."; exit 1
+seed: ## Load development seed data (two organizations, two Keycloak-linked users)
+	$(UV) run python apps/api/scripts/seed_dev_data.py
 
 
 # -----------------------------------------------------------------------------
@@ -91,8 +91,8 @@ test-unit: ## Run unit tests (Python + TypeScript)
 	$(UV) run pytest -m "not integration and not e2e and not workflows and not evals"
 	$(PNPM) run test
 
-test-integration: ## Run integration tests (requires local infrastructure)
-	@echo "NOT AVAILABLE — integration tests against real infrastructure is delivered in Milestone 05."; exit 1
+test-integration: ## Run integration tests (requires `make dev` + `make migrate`)
+	$(UV) run pytest -m integration
 
 test-e2e: ## Run end-to-end browser tests (starts the API and web server itself)
 	$(PNPM) exec playwright test

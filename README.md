@@ -16,19 +16,23 @@ required.
 
 ## Status
 
-**Milestone 03 — Next.js Foundation: complete.**
+**Milestone 04 — Authentication + Multi-Tenancy: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
 
-The API has versioned routing, typed settings, structured JSON logging with automatic redaction,
-request IDs on every response and error, the shared error envelope, liveness and readiness probes,
-and a generated OpenAPI contract.
+The API authenticates every protected route against real Keycloak-issued JWTs, resolves the
+caller's organization and role from the database rather than trusting the token, enforces
+per-permission authorization, and scopes every tenant query through two independent layers — an
+application-layer repository base class and PostgreSQL Row-Level Security. `Organization` and
+`User` are the first real domain entities and database tables, with an Alembic migration and a
+seeded local dataset (`make migrate && make seed`).
 
 The web app is a Next.js operator console with a persistent shell, navigation to every feature
 area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
-page except the dashboard's system health panel is an honest placeholder — there is still **no
-database schema, no domain model and no agents**, so there is nothing real to show yet.
+page except the dashboard's system health panel is an honest placeholder — the web app has no
+login flow yet, and most of the domain model still doesn't exist, so there is little else real to
+show yet.
 
 | Milestone | Scope                                 | Status      |
 | --------- | ------------------------------------- | ----------- |
@@ -36,7 +40,7 @@ database schema, no domain model and no agents**, so there is nothing real to sh
 | 01        | Local infrastructure (Docker Compose) | ✅ Complete |
 | 02        | FastAPI foundation                    | ✅ Complete |
 | 03        | Next.js foundation                    | ✅ Complete |
-| 04        | Authentication + multi-tenancy        | Not started |
+| 04        | Authentication + multi-tenancy        | ✅ Complete |
 | 05        | Database + domain foundation          | Not started |
 | 06–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
 
@@ -84,18 +88,19 @@ Run `make help` to list every target.
 
 ### Local services
 
-| Service                     | URL                                          | Credentials                 |
-| --------------------------- | -------------------------------------------- | --------------------------- |
-| Temporal UI                 | http://localhost:8080                        | —                           |
-| Mailpit (all outbound mail) | http://localhost:8025                        | —                           |
-| MinIO console               | http://localhost:9001                        | `minioadmin` / `minioadmin` |
-| Keycloak                    | http://localhost:8081                        | `admin` / `admin`           |
-| Postgres                    | `postgresql://colt:colt@localhost:5432/colt` | `colt` / `colt`             |
-| Redis                       | `redis://localhost:6379/0`                   | —                           |
-| OTLP gRPC / HTTP            | `localhost:4317` / `localhost:4318`          | —                           |
-| Web                         | http://localhost:3000                        | `make web`                  |
-| API                         | http://localhost:8000                        | `make api`                  |
-| API docs                    | http://localhost:8000/docs                   | `make api`                  |
+| Service                     | URL                                                  | Credentials                 |
+| --------------------------- | ---------------------------------------------------- | --------------------------- |
+| Temporal UI                 | http://localhost:8080                                | —                           |
+| Mailpit (all outbound mail) | http://localhost:8025                                | —                           |
+| MinIO console               | http://localhost:9001                                | `minioadmin` / `minioadmin` |
+| Keycloak                    | http://localhost:8081                                | `admin` / `admin`           |
+| Postgres (migrations)       | `postgresql://colt:colt@localhost:5432/colt`         | `colt` / `colt`             |
+| Postgres (application)      | `postgresql://colt_app:colt_app@localhost:5432/colt` | `colt_app` / `colt_app`     |
+| Redis                       | `redis://localhost:6379/0`                           | —                           |
+| OTLP gRPC / HTTP            | `localhost:4317` / `localhost:4318`                  | —                           |
+| Web                         | http://localhost:3000                                | `make web`                  |
+| API                         | http://localhost:8000                                | `make api`                  |
+| API docs                    | http://localhost:8000/docs                           | `make api`                  |
 
 Those credentials are local-only development defaults, deliberately weak and deliberately
 committed. They exist nowhere but your machine.
@@ -170,7 +175,10 @@ domain  ←  policy  ←  application  ←  workflows
 - **Claude never touches the database or the network directly.** Reasoning goes through typed
   tools, a policy check, then application services (`CLAUDE.md` §2.3, §2.4).
 - **Multi-tenancy from day one.** Every tenant-owned record carries `organization_id`, and a
-  client-supplied organization ID is never trusted (`CLAUDE.md` §2.8, §27).
+  client-supplied organization ID is never trusted (`CLAUDE.md` §2.8, §27). Enforced twice: an
+  application-layer repository base class that cannot query unscoped, and PostgreSQL Row-Level
+  Security. The API connects as the restricted `colt_app` role, never the `colt` superuser Alembic
+  uses for migrations — a superuser bypasses RLS unconditionally, silently defeating it.
 - **Retrieved content is untrusted data**, never instructions — web pages, emails and CRM notes can
   carry prompt injection (`CLAUDE.md` §41).
 - **The domain layer stays clean.** `colt-domain` may not import FastAPI, SQLAlchemy, the

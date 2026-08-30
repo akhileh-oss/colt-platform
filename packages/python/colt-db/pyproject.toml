@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "colt-domain",
+    "colt-config",
+    "sqlalchemy[asyncio]>=2.0.52",
+    "asyncpg>=0.31",
+    "alembic>=1.19",
 ]
 
 [build-system]

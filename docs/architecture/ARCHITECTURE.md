@@ -41,18 +41,19 @@ used.
 
 ## 3. Package map
 
-| Package              | Layer          | Responsibility                                           |
-| -------------------- | -------------- | -------------------------------------------------------- |
-| `colt-domain`        | Domain         | Entities, value objects, invariants, deterministic rules |
-| `colt-application`   | Application    | Use cases, orchestration of domain objects and ports     |
-| `colt-policy`        | Application    | Authorization and business-safety decisions              |
-| `colt-db`            | Infrastructure | SQLAlchemy models, repositories, migrations              |
-| `colt-integrations`  | Infrastructure | Provider adapters behind domain-facing ports             |
-| `colt-ai`            | Infrastructure | AI gateway: model routing, usage and cost accounting     |
-| `colt-agents`        | Application    | Agent definitions, prompts, runtime integration          |
-| `colt-workflows`     | Application    | Temporal workflows and activities                        |
-| `colt-observability` | Cross-cutting  | Logging, tracing, metrics                                |
-| `colt-api`           | Presentation   | FastAPI routers, DTOs, composition root                  |
+| Package              | Layer          | Responsibility                                                                    |
+| -------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `colt-domain`        | Domain         | Entities, value objects, invariants, deterministic rules                          |
+| `colt-application`   | Application    | Use cases, orchestration of domain objects and ports                              |
+| `colt-policy`        | Application    | Authorization and business-safety decisions                                       |
+| `colt-db`            | Infrastructure | SQLAlchemy models, repositories, migrations                                       |
+| `colt-integrations`  | Infrastructure | Provider adapters behind domain-facing ports                                      |
+| `colt-ai`            | Infrastructure | AI gateway: model routing, usage and cost accounting                              |
+| `colt-agents`        | Application    | Agent definitions, prompts, runtime integration                                   |
+| `colt-workflows`     | Application    | Temporal workflows and activities                                                 |
+| `colt-observability` | Cross-cutting  | Logging, tracing, metrics                                                         |
+| `colt-config`        | Cross-cutting  | Typed settings — see [ADR-0003](../decisions/ADR-0003-shared-settings-package.md) |
+| `colt-api`           | Presentation   | FastAPI routers, DTOs, composition root                                           |
 
 ## 4. Request path
 
@@ -79,10 +80,59 @@ otherwise 500s, the responses that most need tracing, would carry no ID.
 Readiness is a registry (`colt_api.readiness`) rather than a fixed list, so Milestone 05 adds the
 database check and Milestone 06 Temporal with one call each.
 
-## 5. Data flow: the core product loop
+## 5. Frontend
+
+`apps/web` is a Next.js App Router application under `src/`, laid out per `CLAUDE.md` §43:
+
+```text
+apps/web/src/
+  app/                  routes, layouts, error/loading/not-found boundaries
+  features/<domain>/    per-feature page content (dashboard, leads, campaigns, ...)
+  components/           shared shell and UI primitives
+  lib/                  cn(), runtime config, the TanStack Query client factory
+  hooks/                shared client hooks (e.g. useSystemHealth)
+  api/                  the configured @colt/api-client instance
+  styles/               globals.css and design tokens
+```
+
+`app/` stays thin — routing and metadata only. Page content lives in `features/<domain>/`, which
+each route's `page.tsx` imports and renders. A feature with no backend yet (every one except the
+probes, until Milestone 10 onward) renders an honest `EmptyState` naming the milestone that
+populates it, rather than fabricated data (`CLAUDE.md` §0.4).
+
+### Server/Client boundary
+
+`app/(shell)/layout.tsx` wraps every product route in `AppShell` — sidebar, header, live system
+health. Interactive pieces (`NavLink`, `SystemHealthBadge`) are Client Components; everything else
+renders on the server by default.
+
+One constraint bit us building this: React Server Components serialise the whole rendered tree
+for the RSC payload (needed for client-side navigation), and a raw component reference is not a
+serialisable value the moment it crosses into a Client Component's props — only a rendered
+element is. `NAV_ITEMS` therefore stores icon _components_, but `AppShell` (Server) renders each
+one to an element — `<item.icon ... />` — before handing it to `NavLink` (Client) as a prop. Passing
+the bare component reference instead fails the production build with "Functions cannot be passed
+directly to Client Components," only at build/prerender time, not in `next dev`.
+
+### Data fetching
+
+Server state goes through TanStack Query (`CLAUDE.md` §77) via the client in `src/api/client.ts`
+for Client Components; Server Components should construct their own request-scoped client with
+`createColtClient` rather than importing that shared instance (`CLAUDE.md` §5.1). No global store
+mirrors backend state.
+
+### API client
+
+`@colt/api-client` is generated from the FastAPI OpenAPI schema — see
+[ADR-0004](../decisions/ADR-0004-typed-api-client-generation.md) and
+[`packages/typescript/api-client/README.md`](../../packages/typescript/api-client/README.md).
+`pnpm --filter @colt/api-client generate` (or `make api-client`) regenerates it; the output is
+committed so a fresh checkout typechecks without running Python first.
+
+## 6. Data flow: the core product loop
 
 _To be documented as Milestones 10–22 land. The loop is specified in `CLAUDE.md` §1.3._
 
-## 6. Deployment topology
+## 7. Deployment topology
 
 _To be documented in Milestone 25._

@@ -10,6 +10,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --build"
+    "typecheck": "tsc --build",
+    "generate:schema": "cd ../../.. && uv run python apps/api/scripts/export_openapi_schema.py packages/typescript/api-client/openapi.json",
+    "generate:types": "openapi-typescript openapi.json -o src/generated/schema.d.ts",
+    "generate": "pnpm run generate:schema && pnpm run generate:types"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
   }
 }

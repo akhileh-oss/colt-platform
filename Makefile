@@ -11,7 +11,7 @@ SHELL := /bin/bash
 UV  ?= uv
 PNPM ?= pnpm
 
-.PHONY: help install dev down logs health api migrate migration seed \
+.PHONY: help install dev down logs health api api-client web migrate migration seed \
         format lint typecheck test test-unit test-integration test-e2e \
         test-workflows eval security build check clean
 
@@ -43,6 +43,12 @@ health: ## Verify every local service is serving
 
 api: ## Run the API locally with reload (requires `make dev` for infrastructure)
 	$(UV) run python -m colt_api
+
+api-client: ## Regenerate the typed TypeScript client from the API's OpenAPI schema
+	$(PNPM) --filter @colt/api-client generate
+
+web: ## Run the web app locally with reload (requires `make dev` and `make api`)
+	$(PNPM) --filter @colt/web dev
 
 
 # -----------------------------------------------------------------------------
@@ -88,8 +94,8 @@ test-unit: ## Run unit tests (Python + TypeScript)
 test-integration: ## Run integration tests (requires local infrastructure)
 	@echo "NOT AVAILABLE — integration tests against real infrastructure is delivered in Milestone 05."; exit 1
 
-test-e2e: ## Run end-to-end browser tests
-	@echo "NOT AVAILABLE — the web application and its Playwright suite is delivered in Milestone 03."; exit 1
+test-e2e: ## Run end-to-end browser tests (starts the API and web server itself)
+	$(PNPM) exec playwright test
 
 test-workflows: ## Run Temporal workflow tests
 	@echo "NOT AVAILABLE — the Temporal workflow test environment is delivered in Milestone 06."; exit 1
@@ -112,7 +118,7 @@ security: ## Scan dependencies and the working tree for secrets
 # Build
 # -----------------------------------------------------------------------------
 build: ## Build all deployable artifacts
-	@echo "NOT AVAILABLE — buildable application artifacts is delivered in Milestone 03."; exit 1
+	$(PNPM) run build
 
 
 # -----------------------------------------------------------------------------

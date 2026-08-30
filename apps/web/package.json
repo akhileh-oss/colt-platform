@@ -2,6 +2,32 @@
   "name": "@colt/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Colt web application (Next.js).",
-  "type": "module"
+  "description": "Colt operator console (Next.js).",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@colt/api-client": "workspace:*",
+    "@colt/ui": "workspace:*",
+    "@radix-ui/react-slot": "1.3.3",
+    "@tanstack/react-query": "5.102.8",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.37.0",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "3.6.0"
+  },
+  "devDependencies": {
+    "@tanstack/react-query-devtools": "5.102.8",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "tailwindcss": "4.3.3",
+    "@tailwindcss/postcss": "4.3.3"
+  }
 }

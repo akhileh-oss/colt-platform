@@ -16,25 +16,26 @@ required.
 
 ## Status
 
-**Milestone 02 — FastAPI Foundation: complete.**
+**Milestone 03 — Next.js Foundation: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
-`make api` runs the API on http://localhost:8000.
 
 The API has versioned routing, typed settings, structured JSON logging with automatic redaction,
 request IDs on every response and error, the shared error envelope, liveness and readiness probes,
 and a generated OpenAPI contract.
 
-There is still **no database schema, no domain model and no agents** — those arrive in the
-milestones below, and `/ready` reports no dependencies because the API has none yet.
+The web app is a Next.js operator console with a persistent shell, navigation to every feature
+area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
+page except the dashboard's system health panel is an honest placeholder — there is still **no
+database schema, no domain model and no agents**, so there is nothing real to show yet.
 
 | Milestone | Scope                                 | Status      |
 | --------- | ------------------------------------- | ----------- |
 | 00        | Repository bootstrap                  | ✅ Complete |
 | 01        | Local infrastructure (Docker Compose) | ✅ Complete |
 | 02        | FastAPI foundation                    | ✅ Complete |
-| 03        | Next.js foundation                    | Not started |
+| 03        | Next.js foundation                    | ✅ Complete |
 | 04        | Authentication + multi-tenancy        | Not started |
 | 05        | Database + domain foundation          | Not started |
 | 06–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
@@ -68,8 +69,10 @@ make check                # lint, typecheck, test, security
 ```
 
 ```bash
-make dev                  # start the local stack, then verify it
-make api                  # run the API on http://localhost:8000
+make dev          # start the local stack, then verify it
+make api          # run the API on http://localhost:8000
+make web          # run the web app on http://localhost:3000
+make test-e2e     # Playwright — builds and starts the API and web app itself
 ```
 
 Cold start takes about 30 seconds. `make dev` validates prerequisites, refuses to run if any
@@ -90,7 +93,7 @@ Run `make help` to list every target.
 | Postgres                    | `postgresql://colt:colt@localhost:5432/colt` | `colt` / `colt`             |
 | Redis                       | `redis://localhost:6379/0`                   | —                           |
 | OTLP gRPC / HTTP            | `localhost:4317` / `localhost:4318`          | —                           |
-| Web                         | http://localhost:3000                        | Milestone 03                |
+| Web                         | http://localhost:3000                        | `make web`                  |
 | API                         | http://localhost:8000                        | `make api`                  |
 | API docs                    | http://localhost:8000/docs                   | `make api`                  |
 
@@ -109,6 +112,7 @@ packages/
   python/
     colt-domain/          Entities, value objects, invariants, deterministic rules
     colt-application/     Use cases and application services
+    colt-config/          Typed settings (ADR-0003)
     colt-agents/          Agent definitions, prompts, runtime integration
     colt-workflows/       Temporal workflows and activities
     colt-integrations/    Provider adapters
@@ -142,16 +146,18 @@ domain  ←  policy  ←  application  ←  workflows
 
 ## Commands
 
-| Command          | Does                                              |
-| ---------------- | ------------------------------------------------- |
-| `make install`   | Install Python and Node dependencies              |
-| `make format`    | Format Python (ruff) and TypeScript (prettier)    |
-| `make lint`      | Lint and check formatting across both stacks      |
-| `make typecheck` | mypy `--strict` and TypeScript project references |
-| `make test`      | Unit tests (pytest + vitest)                      |
-| `make security`  | `pip-audit`, `pnpm audit`, and secret scanning    |
-| `make check`     | Everything above — the CI gate                    |
-| `make clean`     | Remove caches and build artifacts                 |
+| Command           | Does                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| `make install`    | Install Python and Node dependencies                         |
+| `make format`     | Format Python (ruff) and TypeScript (prettier)               |
+| `make lint`       | Lint and check formatting across both stacks                 |
+| `make typecheck`  | mypy `--strict` and TypeScript project references            |
+| `make test`       | Unit tests (pytest + vitest)                                 |
+| `make test-e2e`   | Playwright — builds and starts the API and web app itself    |
+| `make security`   | `pip-audit`, `pnpm audit`, and secret scanning               |
+| `make check`      | Everything above — the CI gate                               |
+| `make api-client` | Regenerate the typed TS client from the API's OpenAPI schema |
+| `make clean`      | Remove caches and build artifacts                            |
 
 ---
 

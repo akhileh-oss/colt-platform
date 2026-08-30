@@ -65,3 +65,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# Intermediate OpenAPI schema dump — regenerate with `pnpm --filter @colt/api-client generate`.
+# src/generated/schema.d.ts (the durable, committed artifact) is derived from this.
+packages/typescript/api-client/openapi.json

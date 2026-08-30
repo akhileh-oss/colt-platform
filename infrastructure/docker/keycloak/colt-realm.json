@@ -12,5 +12,52 @@
   "failureFactor": 10,
   "accessTokenLifespan": 900,
   "ssoSessionIdleTimeout": 1800,
-  "ssoSessionMaxLifespan": 36000
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "colt-api",
+      "name": "Colt API (local development)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "colt-api-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "colt-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "colt-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "username": "alice",
+      "email": "alice@acme-corp.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Alice",
+      "lastName": "Owner",
+      "credentials": [{ "type": "password", "value": "alice-dev-password", "temporary": false }]
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "username": "bob",
+      "email": "bob@globex-inc.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Bob",
+      "lastName": "Owner",
+      "credentials": [{ "type": "password", "value": "bob-dev-password", "temporary": false }]
+    }
+  ]
 }

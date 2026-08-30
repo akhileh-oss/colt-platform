@@ -65,9 +65,25 @@ client
   → SecurityHeadersMiddleware     nosniff, DENY, no-referrer, COOP, Permissions-Policy
   → RequestSizeLimitMiddleware    reject oversized bodies
   → router (/api/v1 or probes)
-  → dependency injection          settings today; principal and session in 04 and 05
+  → dependency injection          settings, db session, JWT verifier, principal, permission check
   → endpoint
 ```
+
+Protected routes add an authentication/authorization stage between routing and the endpoint
+(`CLAUDE.md` §26, ADR-0005):
+
+```text
+  → bearer_token_provider          extract the token, or 401 if missing/malformed
+  → jwt_verifier_provider          verify signature, issuer, audience, expiry against Keycloak
+  → principal_provider             resolve organization + role from the User table, bind RLS
+  → require_permission(Permission) 403 if the resolved role lacks the endpoint's permission
+```
+
+Keycloak establishes _who_ (a verified `sub` claim); it is never asked _which organization_ or
+_what role_ — the `User` table is sole authority on both, so organization membership cannot be
+forged by a token claim. `principal_provider` also binds the resolved organization onto the
+database session's Row-Level Security context (`SET LOCAL app.current_organization_id`), so every
+query the request makes afterward is scoped even if a repository call forgets an explicit filter.
 
 Middleware is registered in reverse: the request context is added last so it is outermost and
 every inner layer can read the request ID.
@@ -77,8 +93,20 @@ The handler for an unhandled `Exception` runs inside Starlette's `ServerErrorMid
 our stack, so it resolves the request ID from the request scope rather than the logging context —
 otherwise 500s, the responses that most need tracing, would carry no ID.
 
-Readiness is a registry (`colt_api.readiness`) rather than a fixed list, so Milestone 05 adds the
-database check and Milestone 06 Temporal with one call each.
+Readiness is a registry (`colt_api.readiness`) rather than a fixed list. Milestone 04 registered
+the database check (a real `SELECT 1` against the pool); Milestone 06 adds Temporal with one more
+call.
+
+### Database engine and connection pooling
+
+`colt_db.session.get_default_engine()` uses `NullPool` — no connection reuse across checkouts —
+rather than SQLAlchemy's default pooled engine. This is a testability constraint, not a production
+performance choice made lightly: a pooled engine binds a connection to the event loop that first
+checked it out, and FastAPI's `TestClient` (via `httpx2`) runs lifespan startup and per-request
+handling on different internal loops, so a pooled engine fails cross-loop mid-suite. A real
+deployed process has exactly one loop for its lifetime, so `NullPool` costs per-request connection
+setup there and nothing else — an accepted tradeoff per `CLAUDE.md` §105's build-priority order
+(reliability and testability before performance) at this stage of the build.
 
 ## 5. Frontend
 

@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from colt_api.routers.v1 import meta
+from colt_api.routers.v1 import me, meta
 
 API_V1_PREFIX = "/api/v1"
 
 router = APIRouter(prefix=API_V1_PREFIX)
 router.include_router(meta.router)
+router.include_router(me.router)

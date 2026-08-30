@@ -120,6 +120,11 @@ class PolicyDeniedError(ColtError):
         super().__init__(ErrorCode.POLICY_DENIED, message, **kwargs)
 
 
+class AuthenticationError(ColtError):
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        super().__init__(ErrorCode.AUTHENTICATION_ERROR, message, **kwargs)
+
+
 def _resolve_request_id(request: Request) -> str | None:
     """Find the request ID for an error body.
 

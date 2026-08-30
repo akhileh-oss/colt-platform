@@ -114,7 +114,7 @@ warn_unused_ignores = true
 disallow_any_unimported = true
 show_error_codes = true
 pretty = true
-files = ["apps/api/src", "apps/api/scripts", "packages/python", "scripts", "tests"]
+files = ["apps/api/src", "apps/api/scripts", "apps/api/tests", "packages/python", "scripts", "tests"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

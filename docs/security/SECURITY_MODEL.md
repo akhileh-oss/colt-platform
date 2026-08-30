@@ -1,7 +1,8 @@
 # Security model
 
-> Skeleton established in Milestone 00; hardened and verified in Milestone 24. Specification:
-> `CLAUDE.md` §26, §27, §33, §40, §41, §42.
+> Skeleton established in Milestone 00. Authentication, authorization and tenant isolation are
+> real as of Milestone 04; the rest of this document is hardened and fully re-verified in
+> Milestone 24. Specification: `CLAUDE.md` §26, §27, §33, §40, §41, §42.
 
 ## 1. Trust boundaries
 
@@ -19,18 +20,43 @@ OIDC/OAuth via an external identity provider — Keycloak locally, a managed pro
 behind the auth abstraction (`CLAUDE.md` §26.1). Background workers and agents use service
 identities, never human credentials (§26.3).
 
+Implemented in Milestone 04 (`colt_api.auth.JwtVerifier`,
+[ADR-0005](../decisions/ADR-0005-auth-and-tenancy-architecture.md)): every protected route
+verifies a bearer JWT's signature (via Keycloak's JWKS endpoint), issuer, audience and expiry
+before anything else runs. The identity provider answers _who_ — the verified `sub` claim — and
+nothing more. It is never asked, and never trusted, for _which organization_ or _what role_;
+`ResolveOrganizationContext` looks those up from the `User` table, which is sole authority on
+organization membership. An unknown identity and a suspended user fail identically
+(`ApplicationError`/401), so neither can be distinguished by probing.
+
 ## 3. Authorization
 
 Capability-based permissions (`company:read`, `message:approve`, `campaign:launch`, …) over the
 roles `OWNER`, `ADMIN`, `MANAGER`, `SALES`, `MARKETING`, `VIEWER`, `SERVICE_AGENT`
 (`CLAUDE.md` §26.2).
 
+Implemented in Milestone 04 (`colt_domain.roles`): `DEFAULT_ROLE_PERMISSIONS` maps each role to
+its permission set; `apps/api/src/colt_api/dependencies.py`'s `require_permission(Permission)`
+dependency factory denies a request with 403 before the endpoint body runs if the resolved
+principal's role lacks the required permission.
+
 ## 4. Tenant isolation
 
 Every tenant-owned query is organization-scoped. A client-supplied `organization_id` is never
 trusted. PostgreSQL Row-Level Security is applied as defence in depth — it does not replace
-application authorization. Cross-tenant isolation is proven by automated tests in `tests/security`
-(`CLAUDE.md` §9.7, §27).
+application authorization. Cross-tenant isolation is proven by automated tests in
+`tests/integration/test_tenant_isolation.py` (`CLAUDE.md` §9.7, §27); `tests/security` is
+populated once Milestone 24 hardens and re-verifies the full surface.
+
+Two independent layers enforce this (Milestone 04), detailed in
+[`docs/architecture/DOMAIN_MODEL.md`](../architecture/DOMAIN_MODEL.md#2-tenancy):
+`TenantScopedRepository` at the application layer, and `FORCE ROW LEVEL SECURITY` policies keyed
+to a per-session `app.current_organization_id` at the database layer. The database layer only
+holds because the application connects as a restricted `colt_app` role rather than the Postgres
+superuser Alembic uses for migrations — a Postgres superuser bypasses Row-Level Security
+unconditionally, which would silently make every RLS policy in this repository dead code. This was
+found, not assumed: an early integration test against the then-default (superuser) connection saw
+every organization's rows from a session with no tenant context set.
 
 ## 5. Secrets
 

@@ -59,9 +59,15 @@ class AppSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     model_config = _CONFIG | SettingsConfigDict(env_prefix="DATABASE_")
 
-    url: SecretStr = SecretStr("postgresql+asyncpg://colt:colt@localhost:5432/colt")
-    pool_size: int = Field(default=10, ge=1)
-    max_overflow: int = Field(default=5, ge=0)
+    #: The running application connects with this — a restricted role that can read and write
+    #: rows but cannot alter schema, and critically is not a Postgres superuser: a superuser
+    #: bypasses Row-Level Security unconditionally, which would make every RLS policy in this
+    #: repository silent dead code (CLAUDE.md §9.7, ADR-0005).
+    url: SecretStr = SecretStr("postgresql+asyncpg://colt_app:colt_app@localhost:5432/colt")
+    #: Alembic connects with this instead — a role with DDL privileges, used for nothing else.
+    #: Least-privilege boundary, not a convenience default (CLAUDE.md §40): the app never runs
+    #: with schema-altering credentials, even accidentally.
+    migration_url: SecretStr = SecretStr("postgresql+asyncpg://colt:colt@localhost:5432/colt")
     echo: bool = False
 
 
@@ -95,7 +101,7 @@ class AuthSettings(BaseSettings):
 
     issuer_url: str = "http://localhost:8081/realms/colt"
     client_id: str = "colt-api"
-    client_secret: SecretStr = SecretStr("change-me")
+    client_secret: SecretStr = SecretStr("colt-api-secret")
     audience: str = "colt-api"
     jwks_cache_seconds: int = Field(default=300, ge=0)
 

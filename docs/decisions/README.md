@@ -15,9 +15,10 @@ Deviating from `CLAUDE.md` without an ADR is not permitted (`CLAUDE.md` §0.1).
 
 ## Index
 
-| ADR                                                  | Decision                                                            | Status   |
-| ---------------------------------------------------- | ------------------------------------------------------------------- | -------- |
-| [0001](./ADR-0001-adopt-the-colt-reference-stack.md) | Adopt the Colt reference stack                                      | Accepted |
-| [0002](./ADR-0002-separate-platform-repository.md)   | Build the platform in a repository separate from the marketing site | Accepted |
-| [0003](./ADR-0003-shared-settings-package.md)        | Typed settings live in a shared `colt-config` package               | Accepted |
-| [0004](./ADR-0004-typed-api-client-generation.md)    | TypeScript client generated with openapi-typescript + openapi-fetch | Accepted |
+| ADR                                                  | Decision                                                                     | Status   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- | -------- |
+| [0001](./ADR-0001-adopt-the-colt-reference-stack.md) | Adopt the Colt reference stack                                               | Accepted |
+| [0002](./ADR-0002-separate-platform-repository.md)   | Build the platform in a repository separate from the marketing site          | Accepted |
+| [0003](./ADR-0003-shared-settings-package.md)        | Typed settings live in a shared `colt-config` package                        | Accepted |
+| [0004](./ADR-0004-typed-api-client-generation.md)    | TypeScript client generated with openapi-typescript + openapi-fetch          | Accepted |
+| [0005](./ADR-0005-auth-and-tenancy-architecture.md)  | Auth (Keycloak OIDC + JWT) and multi-tenancy enforcement (application + RLS) | Accepted |

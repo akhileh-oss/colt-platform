@@ -57,7 +57,7 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["apps/api/src", "packages/python/*/src", "tests"]
+src = ["apps/api/src", "apps/api/scripts", "packages/python/*/src", "tests"]
 # Ruff formats Python inside Markdown fences. CLAUDE.md and the ADRs are specification
 # documents whose code blocks are illustrative and must stay verbatim.
 extend-exclude = ["*.md", ".venv", "node_modules"]
@@ -89,6 +89,10 @@ ignore = [
 # Tests may assert, use fixtures with shadowed names, and skip return annotations.
 "**/tests/**/*.py" = ["S101", "ANN201", "ANN001"]
 "tests/**/*.py" = ["S101", "ANN201", "ANN001"]
+# CLI scripts report to a human by design; T201 exists to catch stray debug prints in
+# application code, not the output a command-line tool is supposed to produce.
+"apps/api/scripts/**/*.py" = ["T201"]
+"scripts/**/*.py" = ["T201"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -110,7 +114,7 @@ warn_unused_ignores = true
 disallow_any_unimported = true
 show_error_codes = true
 pretty = true
-files = ["apps/api/src", "packages/python", "tests"]
+files = ["apps/api/src", "apps/api/scripts", "packages/python", "scripts", "tests"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

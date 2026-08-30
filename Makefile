@@ -11,7 +11,7 @@ SHELL := /bin/bash
 UV  ?= uv
 PNPM ?= pnpm
 
-.PHONY: help install dev down logs health api api-client web migrate migration seed \
+.PHONY: help install dev down logs health api api-client web worker migrate migration seed \
         format lint typecheck test test-unit test-integration test-e2e \
         test-workflows eval security build check clean
 
@@ -49,6 +49,9 @@ api-client: ## Regenerate the typed TypeScript client from the API's OpenAPI sch
 
 web: ## Run the web app locally with reload (requires `make dev` and `make api`)
 	$(PNPM) --filter @colt/web dev
+
+worker: ## Run the Temporal worker (requires `make dev` for infrastructure)
+	$(UV) run python -m colt_workflows
 
 
 # -----------------------------------------------------------------------------
@@ -97,8 +100,8 @@ test-integration: ## Run integration tests (requires `make dev` + `make migrate`
 test-e2e: ## Run end-to-end browser tests (starts the API and web server itself)
 	$(PNPM) exec playwright test
 
-test-workflows: ## Run Temporal workflow tests
-	@echo "NOT AVAILABLE — the Temporal workflow test environment is delivered in Milestone 06."; exit 1
+test-workflows: ## Run Temporal workflow tests (in-process time-skipping environment)
+	$(UV) run pytest -m workflows
 
 eval: ## Run AI evaluation suites
 	@echo "NOT AVAILABLE — the AI evaluation system is delivered in Milestone 23."; exit 1

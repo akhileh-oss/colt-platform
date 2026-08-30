@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 05 — Database + Domain Foundation: complete.**
+**Milestone 06 — Temporal Foundation: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -28,12 +28,15 @@ application-layer repository base class and PostgreSQL Row-Level Security, now c
 eleven tenant-owned tables. `Organization`, `User`, `Company`, `Person`, `Signal`, `Evidence`,
 `Lead`, `Campaign`, `Message`, `Conversation`, `Opportunity` and `AuditLog` are real domain
 entities and database tables, with Alembic migrations and a seeded local dataset
-(`make migrate && make seed`).
+(`make migrate && make seed`). A Temporal worker (`make worker`) runs real workflows against the
+local Temporal server, with a proven-durable example workflow — killing the worker mid-workflow
+and starting a fresh one still completes it correctly, from server-tracked state rather than
+worker memory.
 
 The web app is a Next.js operator console with a persistent shell, navigation to every feature
 area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
-page except the dashboard's system health panel is an honest placeholder — the schema and
-repositories exist, but no route yet reads or writes through them, and the web app has no login
+page except the dashboard's system health panel is an honest placeholder — the schema, repositories
+and worker exist, but no route yet reads or writes through them, and the web app has no login
 flow yet, so there is little else real to show.
 
 | Milestone | Scope                                 | Status      |
@@ -44,7 +47,8 @@ flow yet, so there is little else real to show.
 | 03        | Next.js foundation                    | ✅ Complete |
 | 04        | Authentication + multi-tenancy        | ✅ Complete |
 | 05        | Database + domain foundation          | ✅ Complete |
-| 06–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
+| 06        | Temporal foundation                   | ✅ Complete |
+| 07–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
 
 ---
 
@@ -78,6 +82,7 @@ make check                # lint, typecheck, test, security
 make dev          # start the local stack, then verify it
 make api          # run the API on http://localhost:8000
 make web          # run the web app on http://localhost:3000
+make worker       # run the Temporal worker
 make test-e2e     # Playwright — builds and starts the API and web app itself
 ```
 
@@ -153,18 +158,20 @@ domain  ←  policy  ←  application  ←  workflows
 
 ## Commands
 
-| Command           | Does                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| `make install`    | Install Python and Node dependencies                         |
-| `make format`     | Format Python (ruff) and TypeScript (prettier)               |
-| `make lint`       | Lint and check formatting across both stacks                 |
-| `make typecheck`  | mypy `--strict` and TypeScript project references            |
-| `make test`       | Unit tests (pytest + vitest)                                 |
-| `make test-e2e`   | Playwright — builds and starts the API and web app itself    |
-| `make security`   | `pip-audit`, `pnpm audit`, and secret scanning               |
-| `make check`      | Everything above — the CI gate                               |
-| `make api-client` | Regenerate the typed TS client from the API's OpenAPI schema |
-| `make clean`      | Remove caches and build artifacts                            |
+| Command                 | Does                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| `make install`          | Install Python and Node dependencies                         |
+| `make format`           | Format Python (ruff) and TypeScript (prettier)               |
+| `make lint`             | Lint and check formatting across both stacks                 |
+| `make typecheck`        | mypy `--strict` and TypeScript project references            |
+| `make test`             | Unit tests (pytest + vitest)                                 |
+| `make test-workflows`   | Temporal workflow tests (in-process time-skipping)           |
+| `make test-integration` | Integration tests (requires `make dev` + `make migrate`)     |
+| `make test-e2e`         | Playwright — builds and starts the API and web app itself    |
+| `make security`         | `pip-audit`, `pnpm audit`, and secret scanning               |
+| `make check`            | Everything above — the CI gate                               |
+| `make api-client`       | Regenerate the typed TS client from the API's OpenAPI schema |
+| `make clean`            | Remove caches and build artifacts                            |
 
 ---
 

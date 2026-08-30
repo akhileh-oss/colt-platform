@@ -45,7 +45,11 @@ def _build_lifespan(
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        # Startup. Milestone 06 registers the Temporal client here and its own readiness check.
+        # Startup. Milestone 06 built the Temporal worker as its own process (`python -m
+        # colt_workflows`, CLAUDE.md §3.7: "Temporal workers scale independently from FastAPI")
+        # rather than something the API process runs inline — so there is no Temporal client to
+        # register here yet. One is added once a route actually needs to start or signal a
+        # workflow (Milestone 18, `LeadOutreachWorkflow`).
         logger.info(
             "api starting",
             extra={"operation": "startup", "environment": settings.app.env.value},
@@ -66,8 +70,7 @@ def _build_lifespan(
 
         yield
 
-        # Shutdown: stop accepting work, then release resources (CLAUDE.md §58). Temporal's
-        # client and worker are closed here too, from Milestone 06.
+        # Shutdown: stop accepting work, then release resources (CLAUDE.md §58).
         await engine.dispose()
         readiness_registry.clear()
         logger.info("api stopping", extra={"operation": "shutdown"})

@@ -1,0 +1,43 @@
+"""The `people` table (CLAUDE.md §10.4)."""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from sqlalchemy import ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from colt_db.base import Base, IdentityMixin, TimestampMixin
+
+
+class PersonModel(IdentityMixin, TimestampMixin, Base):
+    __tablename__ = "people"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    first_name: Mapped[str | None] = mapped_column(String(150))
+    last_name: Mapped[str | None] = mapped_column(String(150))
+    full_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(200))
+    seniority: Mapped[str | None] = mapped_column(String(50))
+    department: Mapped[str | None] = mapped_column(String(100))
+    email: Mapped[str | None] = mapped_column(String(320), index=True)
+    email_status: Mapped[str | None] = mapped_column(String(50))
+    linkedin_url: Mapped[str | None] = mapped_column(String(2048))
+    location: Mapped[str | None] = mapped_column(String(200))
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )

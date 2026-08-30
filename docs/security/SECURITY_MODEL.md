@@ -45,11 +45,14 @@ principal's role lacks the required permission.
 Every tenant-owned query is organization-scoped. A client-supplied `organization_id` is never
 trusted. PostgreSQL Row-Level Security is applied as defence in depth — it does not replace
 application authorization. Cross-tenant isolation is proven by automated tests in
-`tests/integration/test_tenant_isolation.py` (`CLAUDE.md` §9.7, §27); `tests/security` is
-populated once Milestone 24 hardens and re-verifies the full surface.
+`tests/integration/test_tenant_isolation.py` (the original `users` coverage from Milestone 04)
+and `tests/integration/test_domain_tables.py` (the ten tables Milestone 05 added — `companies`,
+`people`, `signals`, `evidence`, `leads`, `campaigns`, `messages`, `conversations`,
+`opportunities`, `audit_logs`) (`CLAUDE.md` §9.7, §27); `tests/security` is populated once
+Milestone 24 hardens and re-verifies the full surface.
 
-Two independent layers enforce this (Milestone 04), detailed in
-[`docs/architecture/DOMAIN_MODEL.md`](../architecture/DOMAIN_MODEL.md#2-tenancy):
+Two independent layers enforce this (Milestone 04, extended to every table in Milestone 05),
+detailed in [`docs/architecture/DOMAIN_MODEL.md`](../architecture/DOMAIN_MODEL.md#2-tenancy):
 `TenantScopedRepository` at the application layer, and `FORCE ROW LEVEL SECURITY` policies keyed
 to a per-session `app.current_organization_id` at the database layer. The database layer only
 holds because the application connects as a restricted `colt_app` role rather than the Postgres

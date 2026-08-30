@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 04 — Authentication + Multi-Tenancy: complete.**
+**Milestone 05 — Database + Domain Foundation: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -24,15 +24,17 @@ MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every s
 The API authenticates every protected route against real Keycloak-issued JWTs, resolves the
 caller's organization and role from the database rather than trusting the token, enforces
 per-permission authorization, and scopes every tenant query through two independent layers — an
-application-layer repository base class and PostgreSQL Row-Level Security. `Organization` and
-`User` are the first real domain entities and database tables, with an Alembic migration and a
-seeded local dataset (`make migrate && make seed`).
+application-layer repository base class and PostgreSQL Row-Level Security, now covering all
+eleven tenant-owned tables. `Organization`, `User`, `Company`, `Person`, `Signal`, `Evidence`,
+`Lead`, `Campaign`, `Message`, `Conversation`, `Opportunity` and `AuditLog` are real domain
+entities and database tables, with Alembic migrations and a seeded local dataset
+(`make migrate && make seed`).
 
 The web app is a Next.js operator console with a persistent shell, navigation to every feature
 area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
-page except the dashboard's system health panel is an honest placeholder — the web app has no
-login flow yet, and most of the domain model still doesn't exist, so there is little else real to
-show yet.
+page except the dashboard's system health panel is an honest placeholder — the schema and
+repositories exist, but no route yet reads or writes through them, and the web app has no login
+flow yet, so there is little else real to show.
 
 | Milestone | Scope                                 | Status      |
 | --------- | ------------------------------------- | ----------- |
@@ -41,7 +43,7 @@ show yet.
 | 02        | FastAPI foundation                    | ✅ Complete |
 | 03        | Next.js foundation                    | ✅ Complete |
 | 04        | Authentication + multi-tenancy        | ✅ Complete |
-| 05        | Database + domain foundation          | Not started |
+| 05        | Database + domain foundation          | ✅ Complete |
 | 06–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
 
 ---

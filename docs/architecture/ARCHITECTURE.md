@@ -94,8 +94,11 @@ our stack, so it resolves the request ID from the request scope rather than the 
 otherwise 500s, the responses that most need tracing, would carry no ID.
 
 Readiness is a registry (`colt_api.readiness`) rather than a fixed list. Milestone 04 registered
-the database check (a real `SELECT 1` against the pool); Milestone 06 adds Temporal with one more
-call.
+the database check (a real `SELECT 1` against the pool). Milestone 06 built the Temporal worker
+as its own independent process rather than something the API runs inline (§3.7: "Temporal
+workers scale independently from FastAPI"), so there is no Temporal client in the API yet to add
+a readiness check for — one is added once a route needs to start or signal a workflow
+(Milestone 18).
 
 ### Database engine and connection pooling
 
@@ -108,7 +111,27 @@ deployed process has exactly one loop for its lifetime, so `NullPool` costs per-
 setup there and nothing else — an accepted tradeoff per `CLAUDE.md` §105's build-priority order
 (reliability and testability before performance) at this stage of the build.
 
-## 5. Frontend
+## 5. Temporal worker
+
+`colt-workflows` is both the workflows/activities library and the worker process:
+`python -m colt_workflows` (`make worker`) is its entry point, kept deliberately separate from
+`apps/api` — Temporal workers scale independently from FastAPI (§3.7), and there is no
+`apps/worker` directory in the canonical repository structure (§4) to put one in.
+
+`colt_workflows.worker.run_worker` is factored out from `__main__` so the real process and tests
+construct a worker identically: it connects to Temporal, builds a `Worker` over the configured
+workflows/activities, and runs until a caller-supplied `asyncio.Event` is set. `__main__.py`
+wires `SIGTERM`/`SIGINT` to that event; the SDK's own `async with worker:` shutdown then drains
+in-flight activity tasks rather than dropping them (§58).
+
+Milestone 06's acceptance criterion — a workflow surviving a worker restart — is proven by
+running this exact function in a subprocess, killing it mid-workflow, and starting a fresh one
+(`tests/integration/test_workflow_durability.py`). A separate, faster suite
+(`tests/workflows/test_example_workflow.py`) covers workflow logic against Temporal's in-process
+time-skipping test environment, which has no worker process to kill and so cannot substitute for
+the durability proof.
+
+## 6. Frontend
 
 `apps/web` is a Next.js App Router application under `src/`, laid out per `CLAUDE.md` §43:
 
@@ -157,10 +180,10 @@ mirrors backend state.
 `pnpm --filter @colt/api-client generate` (or `make api-client`) regenerates it; the output is
 committed so a fresh checkout typechecks without running Python first.
 
-## 6. Data flow: the core product loop
+## 7. Data flow: the core product loop
 
 _To be documented as Milestones 10–22 land. The loop is specified in `CLAUDE.md` §1.3._
 
-## 7. Deployment topology
+## 8. Deployment topology
 
 _To be documented in Milestone 25._

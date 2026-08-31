@@ -8,6 +8,8 @@ dependencies = [
     "fastapi>=0.121",
     "uvicorn[standard]>=0.38",
     "pyjwt[crypto]>=2.13",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "temporalio>=1.9",
     "colt-config",
     "colt-domain",
     "colt-application",

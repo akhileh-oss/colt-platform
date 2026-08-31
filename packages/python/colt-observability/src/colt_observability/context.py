@@ -11,6 +11,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Final
 
+from opentelemetry import trace
+
 #: The correlation fields CLAUDE.md §35.1 requires, where applicable.
 CONTEXT_FIELDS: Final[tuple[str, ...]] = (
     "request_id",
@@ -30,8 +32,21 @@ _log_context: ContextVar[dict[str, str] | None] = ContextVar("colt_log_context",
 
 
 def get_log_context() -> dict[str, str]:
-    """Return the correlation fields currently bound."""
-    return dict(_log_context.get() or {})
+    """Return the correlation fields currently bound, plus `trace_id`/`span_id` from the active
+    OpenTelemetry span, if any.
+
+    Trace correlation is structural rather than something every log call site must remember to
+    bind — the same principle §93 applies to redaction. When no span is active (tracing not
+    configured, or code running outside a traced request/workflow/activity), this silently omits
+    both fields rather than erroring: `trace.get_current_span()` always returns a valid object,
+    just a non-recording one, whose span context is invalid.
+    """
+    context = dict(_log_context.get() or {})
+    span_context = trace.get_current_span().get_span_context()
+    if span_context.is_valid:
+        context["trace_id"] = format(span_context.trace_id, "032x")
+        context["span_id"] = format(span_context.span_id, "016x")
+    return context
 
 
 def get_request_id() -> str | None:

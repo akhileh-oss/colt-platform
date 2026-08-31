@@ -11,6 +11,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sqlalchemy import text
 
 from colt_api.errors import ErrorResponse, register_exception_handlers
@@ -25,7 +26,14 @@ from colt_api.routers import health
 from colt_api.routers.v1 import router as v1
 from colt_config import Settings, get_settings
 from colt_db import get_default_engine
-from colt_observability import configure_logging, get_logger
+from colt_observability import (
+    configure_logging,
+    configure_metrics,
+    configure_sentry,
+    configure_tracing,
+    get_logger,
+    instrument_sqlalchemy,
+)
 
 logger = get_logger(__name__)
 
@@ -90,6 +98,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         level=settings.app.log_level,
         service_name=settings.observability.service_name,
     )
+    configure_tracing(
+        service_name=settings.observability.service_name,
+        otlp_endpoint=settings.observability.otel_endpoint,
+        sample_rate=settings.observability.trace_sample_rate,
+    )
+    instrument_sqlalchemy()
+    configure_sentry(
+        settings.observability.sentry_dsn.get_secret_value() or None,
+        environment=settings.app.env.value,
+    )
+    if settings.observability.metrics_enabled:
+        configure_metrics(
+            service_name=settings.observability.service_name,
+            otlp_endpoint=settings.observability.otel_endpoint,
+        )
 
     app = FastAPI(
         title="Colt API",
@@ -128,6 +151,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(v1.router)
+
+    # After routers are registered, so every route gets an HTTP span (CLAUDE.md §35: "Instrument
+    # HTTP requests"). This also propagates incoming trace context from request headers, which
+    # is how a downstream Temporal workflow started from a route joins the same trace.
+    FastAPIInstrumentor.instrument_app(app)
 
     return app
 

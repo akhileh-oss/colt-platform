@@ -1,4 +1,4 @@
-"""The Temporal worker process (CLAUDE.md §3.3, §24, §58).
+"""The Temporal worker process (CLAUDE.md §3.3, §24, §35, §58).
 
 `run_worker` is factored out from `__main__` so both the real process entry point and tests
 (hermetic and real-infra alike) construct a worker the same way — the durability test in
@@ -12,19 +12,22 @@ from collections.abc import Sequence
 from typing import Any
 
 from temporalio.client import Client
+from temporalio.contrib.opentelemetry import TracingInterceptor
 from temporalio.worker import Worker
 
 from colt_config import Settings, get_settings
-from colt_observability import get_logger
+from colt_observability import configure_tracing, get_logger, instrument_sqlalchemy
 from colt_workflows.activities.example import greet
+from colt_workflows.activities.trace_check import count_organizations
 from colt_workflows.workflows.example import ExampleWorkflow
+from colt_workflows.workflows.trace_check import TraceCheckWorkflow
 
 logger = get_logger(__name__)
 
-#: Every workflow and activity this worker executes. Milestone 06 has exactly one of each —
-#: later milestones register their own here as they add real workflows.
-WORKFLOWS: Sequence[type] = (ExampleWorkflow,)
-ACTIVITIES: Sequence[Any] = (greet,)
+#: Every workflow and activity this worker executes. Later milestones register their own here
+#: as they add real workflows.
+WORKFLOWS: Sequence[type] = (ExampleWorkflow, TraceCheckWorkflow)
+ACTIVITIES: Sequence[Any] = (greet, count_organizations)
 
 
 async def run_worker(
@@ -40,7 +43,30 @@ async def run_worker(
     settings = settings or get_settings()
     shutdown_event = shutdown_event or asyncio.Event()
 
-    client = await Client.connect(settings.temporal.address, namespace=settings.temporal.namespace)
+    # Without this, `TracingInterceptor` below still creates spans, but against OpenTelemetry's
+    # default no-op provider — a span whose context is never valid, so `get_log_context()` would
+    # never see a trace_id to correlate activity logs with, and nothing would export. This is
+    # the worker's own tracer, distinct from the API process's (colt_api.app.create_app());
+    # each process configures its own, exactly like each configures its own logging.
+    configure_tracing(
+        service_name=settings.observability.service_name,
+        otlp_endpoint=settings.observability.otel_endpoint,
+        sample_rate=settings.observability.trace_sample_rate,
+    )
+    # A DB span needs SQLAlchemy instrumented in *this* process too — `count_organizations`
+    # opens its own engine here, in the worker, not in the API process that started the
+    # workflow (CLAUDE.md §68: the trace must span API → workflow → activity → DB).
+    instrument_sqlalchemy()
+
+    client = await Client.connect(
+        settings.temporal.address,
+        namespace=settings.temporal.namespace,
+        # Reads trace context Temporal carries as workflow/activity headers and turns it back
+        # into spans, so a trace started by whatever called start_workflow (an API request, in
+        # Milestone 07's case) continues through workflow and activity execution here rather
+        # than starting a disconnected trace of its own.
+        interceptors=[TracingInterceptor()],
+    )
     worker = Worker(
         client,
         task_queue=settings.temporal.task_queue,

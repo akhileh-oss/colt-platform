@@ -131,7 +131,43 @@ running this exact function in a subprocess, killing it mid-workflow, and starti
 time-skipping test environment, which has no worker process to kill and so cannot substitute for
 the durability proof.
 
-## 6. Frontend
+## 6. Observability
+
+Every process configures its own tracing, metrics and logging independently — `colt_api.app`'s
+`create_app()` and `colt_workflows.worker`'s `run_worker()` each call
+`colt_observability.configure_tracing()`/`configure_metrics()`, matching how each already calls
+`configure_logging()` (`CLAUDE.md` §35). `FastAPIInstrumentor` instruments every HTTP route;
+`SQLAlchemyInstrumentor` instruments every engine, in whichever process opens one; Temporal's own
+`TracingInterceptor` (wired into both the worker's client and the API's per-request Temporal
+client, `colt_api.dependencies.temporal_client_provider`) carries trace context across the
+Temporal RPC boundary as headers, so a workflow a route starts continues the same trace rather
+than beginning a disconnected one.
+
+Trace correlation is structural in logs, not something a call site must remember: every log
+record picks up `trace_id`/`span_id` from whatever OpenTelemetry span is active when it's
+emitted (`colt_observability.context.get_log_context`), the same principle §93 already applies to
+redaction. `POST /api/v1/observability/trace-check` exists solely to give Milestone 07's
+acceptance criterion — a trace spanning API → workflow → activity → DB — a real request to prove
+against; it starts `TraceCheckWorkflow` and is not a product endpoint, the way `/api/v1/meta` and
+the health probes aren't. `tests/integration/test_trace_propagation.py` proves the whole chain
+with two genuinely separate OS processes (an in-process API request via `TestClient`, and a real
+`python -m colt_workflows` worker subprocess): the trace ID the API's response reports is
+asserted to match the trace ID the worker's own DB-touching activity logged, independently,
+across the real Temporal RPC boundary — not asserted from documentation.
+
+A real bug this caught: `colt_workflows`'s top-level `__init__.py` used to re-export
+`run_worker`/`ACTIVITIES`/`WORKFLOWS` for convenience. Since Python always initializes a parent
+package before a submodule, any workflow file (`colt_workflows.workflows.example`, say) forced
+that `__init__` to run too — and once it imported `colt_workflows.worker` (which needs
+`colt_observability`'s full OpenTelemetry SDK and `colt_db`'s SQLAlchemy/asyncpg), Temporal's
+workflow sandbox refused to validate the workflow at all, since a workflow must never import
+real I/O-capable libraries directly. Fixed by keeping both `colt_workflows/__init__.py` and
+`colt_workflows/activities/__init__.py` deliberately minimal, and wrapping the activity imports
+inside actual workflow files with `workflow.unsafe.imports_passed_through()` — the SDK's own
+documented escape hatch for imports a workflow file must make but the sandbox should trust
+rather than validate.
+
+## 7. Frontend
 
 `apps/web` is a Next.js App Router application under `src/`, laid out per `CLAUDE.md` §43:
 
@@ -180,10 +216,10 @@ mirrors backend state.
 `pnpm --filter @colt/api-client generate` (or `make api-client`) regenerates it; the output is
 committed so a fresh checkout typechecks without running Python first.
 
-## 7. Data flow: the core product loop
+## 8. Data flow: the core product loop
 
 _To be documented as Milestones 10–22 land. The loop is specified in `CLAUDE.md` §1.3._
 
-## 8. Deployment topology
+## 9. Deployment topology
 
 _To be documented in Milestone 25._

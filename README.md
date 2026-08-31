@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 06 — Temporal Foundation: complete.**
+**Milestone 07 — Observability Foundation: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -31,7 +31,10 @@ entities and database tables, with Alembic migrations and a seeded local dataset
 (`make migrate && make seed`). A Temporal worker (`make worker`) runs real workflows against the
 local Temporal server, with a proven-durable example workflow — killing the worker mid-workflow
 and starting a fresh one still completes it correctly, from server-tracked state rather than
-worker memory.
+worker memory. Every request, workflow, activity and database query is traced with
+OpenTelemetry and correlated by `trace_id` in structured JSON logs — proven by one real request
+whose trace ID appears in both the API's own log line and a DB-touching Temporal activity's, in
+a genuinely separate worker process.
 
 The web app is a Next.js operator console with a persistent shell, navigation to every feature
 area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
@@ -48,7 +51,8 @@ flow yet, so there is little else real to show.
 | 04        | Authentication + multi-tenancy        | ✅ Complete |
 | 05        | Database + domain foundation          | ✅ Complete |
 | 06        | Temporal foundation                   | ✅ Complete |
-| 07–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
+| 07        | Observability foundation              | ✅ Complete |
+| 08–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
 
 ---
 

@@ -14,7 +14,14 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from colt_workflows.activities.example import ExampleActivityInput, greet
+# The activities package's __init__ transitively imports colt_observability (OpenTelemetry,
+# Milestone 07) and colt_db (SQLAlchemy/asyncpg) — real I/O-capable libraries the workflow
+# sandbox will not let a workflow file import directly, since a workflow must be deterministic
+# and never touch either at runtime itself (only inside an activity, which does run outside the
+# sandbox). `imports_passed_through` tells the sandbox this import is trusted infrastructure,
+# not workflow logic to validate.
+with workflow.unsafe.imports_passed_through():
+    from colt_workflows.activities.example import ExampleActivityInput, greet
 
 
 @workflow.defn

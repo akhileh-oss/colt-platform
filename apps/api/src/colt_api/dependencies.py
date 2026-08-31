@@ -23,6 +23,8 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from temporalio.client import Client
+from temporalio.contrib.opentelemetry import TracingInterceptor
 
 from colt_api.auth import JwtVerifier, TokenVerificationError
 from colt_api.errors import AuthenticationError, PolicyDeniedError
@@ -156,3 +158,26 @@ def require_permission(
         return principal
 
     return _check
+
+
+# --- Temporal (Milestone 07: observability verification only) -----------------------------
+
+
+async def temporal_client_provider(settings: SettingsDep) -> Client:
+    """A fresh client per request, deliberately uncached.
+
+    Not the pattern a hot-path route would want, but there is exactly one caller today
+    (`POST /api/v1/observability/trace-check`, which exists to prove the trace pipeline works,
+    not to be fast) and caching an async client across requests risks the same cross-event-loop
+    hazards `colt_db.session`'s `NullPool` exists to avoid (see its docstring) — correctness over
+    premature optimization at this stage (CLAUDE.md §105). `TracingInterceptor` propagates this
+    request's trace context onto the workflow it starts.
+    """
+    return await Client.connect(
+        settings.temporal.address,
+        namespace=settings.temporal.namespace,
+        interceptors=[TracingInterceptor()],
+    )
+
+
+TemporalClientDep = Annotated[Client, Depends(temporal_client_provider)]

@@ -167,7 +167,49 @@ inside actual workflow files with `workflow.unsafe.imports_passed_through()` —
 documented escape hatch for imports a workflow file must make but the sandbox should trust
 rather than validate.
 
-## 7. Frontend
+## 7. AI Gateway
+
+`colt_ai.AnthropicGateway` is the only place in Colt allowed to import the Anthropic SDK
+directly (`CLAUDE.md` §8.2: "service code importing provider-specific implementations
+directly" is forbidden everywhere else; §2.7 requires provider abstraction). Agents and
+application services call the gateway, never `anthropic.*` — a provider change is a change to
+one file, not a grep across the codebase.
+
+`AnthropicGateway.generate_structured()` routes a `ModelClass` (`FAST`/`STANDARD`/`DEEP`/
+`STRATEGIC`) to a concrete model ID through `AnthropicSettings.model_id_for()` (§14.1/§14.2 —
+a model change is configuration, not a code rewrite), and validates the response against a
+caller-supplied Pydantic schema server-side (`client.messages.parse(..., output_format=...)`)
+rather than trusting free-text JSON. Timeout and retry are the SDK's own (`AnthropicSettings.
+timeout_seconds`/`max_retries`, built on exponential backoff with jitter) — `colt_ai.errors.
+classify()` turns whatever the SDK gives up on into Colt's own error taxonomy (§36), ordered
+most-specific-first exactly as the SDK's own typed exception hierarchy requires (`APITimeoutError`
+is a subclass of `APIConnectionError`; every HTTP-status error is a subclass of `APIStatusError`).
+
+Usage and cost are recorded from `response.usage` on every call — `colt_ai.pricing.
+estimate_cost_usd()` prices known model IDs and returns `None` rather than guessing for one it
+doesn't recognise yet, and `llm_input_tokens`/`llm_output_tokens`/`provider_latency`/
+`provider_rate_limits` (§35.2) are emitted as real OpenTelemetry instruments the moment this
+milestone gives them something to measure — the first of §35.2's metrics beyond Milestone 07's
+HTTP instruments to actually ship.
+
+**Redaction here is what the gateway does _not_ log, not a filter on what it does.**
+§93's `colt_observability.redact()` only catches sensitive _keys_ in structured payloads
+(`api_key`, `password`, ...), never free text — a prompt or a model's response is exactly the
+free text it can't see inside. So `AnthropicGateway` never passes `prompt`/`system`/response
+content to a logger call or a span attribute in the first place; only metadata (model, token
+counts, latency, request and agent-run IDs) reaches logs and traces (§35.1: "do not log ...
+sensitive personal information unnecessarily").
+
+`client` is an injectable constructor parameter — the same pattern `colt_observability.
+configure_tracing()`'s injectable `exporter` established in Milestone 07 — so tests exercise
+routing, usage accounting, error classification and the no-content-logging guarantee against a
+real `AsyncAnthropic` instance with only its `.messages.parse` method replaced, deterministically
+and with no network call. **Milestone 08's literal acceptance criterion — "one deterministic
+test call produces a validated structured result and records usage metadata" — is proven this
+way, against a fake response, not a real Anthropic API call: no real API key exists in this
+environment.** See the Milestone 08 PR for what that leaves unverified.
+
+## 8. Frontend
 
 `apps/web` is a Next.js App Router application under `src/`, laid out per `CLAUDE.md` §43:
 
@@ -216,10 +258,10 @@ mirrors backend state.
 `pnpm --filter @colt/api-client generate` (or `make api-client`) regenerates it; the output is
 committed so a fresh checkout typechecks without running Python first.
 
-## 8. Data flow: the core product loop
+## 9. Data flow: the core product loop
 
 _To be documented as Milestones 10–22 land. The loop is specified in `CLAUDE.md` §1.3._
 
-## 9. Deployment topology
+## 10. Deployment topology
 
 _To be documented in Milestone 25._

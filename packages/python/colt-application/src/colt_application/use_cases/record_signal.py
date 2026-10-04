@@ -1,4 +1,11 @@
-"""Tenant-scoped repository for `Signal` (CLAUDE.md §10.5)."""
+"""Record one observed `Signal` (CLAUDE.md §10.5, §12.6) — the use case `colt-agents`'
+`record_signal` tool calls.
+
+Unlike `RecordEvidence`, nothing here is server-computed: `signal_type`/`confidence`/
+`business_implication` are the judgment `SignalAgent` already formed from the raw trigger
+payload it was given (§2.1 reserves deterministic computation for application code, not the
+reverse) — this use case's only job is persistence through the repository port.
+"""
 
 from __future__ import annotations
 
@@ -6,14 +13,15 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from colt_db.mappers import signal_to_domain
-from colt_db.models.signal import SignalModel
-from colt_db.tenancy import TenantScopedRepository
+from colt_application.ports.signal_repository import SignalRepository
 from colt_domain import Signal
 
 
-class SqlAlchemySignalRepository(TenantScopedRepository):
-    async def add(
+class RecordSignal:
+    def __init__(self, signals: SignalRepository) -> None:
+        self._signals = signals
+
+    async def __call__(
         self,
         *,
         company_id: UUID,
@@ -28,8 +36,7 @@ class SqlAlchemySignalRepository(TenantScopedRepository):
         business_implication: str | None = None,
         raw_payload: dict[str, Any] | None = None,
     ) -> Signal:
-        model = SignalModel(
-            organization_id=self.organization_id,
+        return await self._signals.add(
             company_id=company_id,
             person_id=person_id,
             signal_type=signal_type,
@@ -40,14 +47,5 @@ class SqlAlchemySignalRepository(TenantScopedRepository):
             confidence=confidence,
             summary=summary,
             business_implication=business_implication,
-            raw_payload=raw_payload or {},
+            raw_payload=raw_payload,
         )
-        self._session.add(model)
-        await self._session.flush()
-        await self._session.refresh(model)
-        return signal_to_domain(model)
-
-    async def get(self, signal_id: UUID) -> Signal | None:
-        stmt = self._select_scoped(SignalModel).where(SignalModel.id == signal_id)
-        model = (await self._session.execute(stmt)).scalar_one_or_none()
-        return signal_to_domain(model) if model is not None else None

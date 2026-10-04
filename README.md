@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 11 — Discovery + Enrichment: complete** (one acceptance step unverified — see below).
+**Milestone 12 — Signal Engine: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -71,13 +71,22 @@ ID, then normalized email/LinkedIn URL, then company + normalized name gated by 
 threshold) — never on fuzzy name similarity. `EnrichmentAgent` resolves additional data for an
 already-known company or person, and never lets a lower-confidence provider result silently
 overwrite higher-confidence data already on file.
-**One caveat, carried from Milestones 08-10:** no real Anthropic API key exists in this
+
+`SignalAgent` (`CLAUDE.md` §12.6) detects "why now" events: it polls pending raw trigger events
+(`poll_signal_sources`, backed by `SignalTriggerSource` — `FakeSignalTriggerSource` is the
+literal "mock trigger" Milestone 12's acceptance criterion names, since CLAUDE.md names no
+specific real signal-source provider) and records the single strongest one it finds
+(`record_signal`) with a `business_implication` — the model's own judgment, never a
+deterministic computation. `colt_application.signals.rank_signal()` then scores it
+deterministically from its own stored fields (signal-type weight × confidence × freshness
+decay) — a pure function, not a persisted column, reproducible by anyone from the row alone.
+**One caveat, carried from Milestones 08-11:** no real Anthropic API key exists in this
 environment, so every milestone built on `colt_ai.AnthropicGateway` proves its literal
 acceptance criterion against a fake response at the `AsyncAnthropic` client boundary, not a real
 network call (no real Apollo API key exists either). Every other line of the gateway's,
 runtime's, and this milestone's own logic (routing, usage accounting, error classification,
-telemetry, redaction, persistence, identity resolution, confidence precedence) runs for real in
-those tests; only the actual provider round-trips are substituted.
+telemetry, redaction, persistence, identity resolution, confidence precedence, ranking) runs
+for real in those tests; only the actual provider round-trips are substituted.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -93,7 +102,8 @@ those tests; only the actual provider round-trips are substituted.
 | 09        | Agent runtime + tool registry         | ✅ Complete (see caveat above) |
 | 10        | Research + evidence                   | ✅ Complete (see caveat above) |
 | 11        | Discovery + enrichment                | ✅ Complete (see caveat above) |
-| 12–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 12        | Signal engine                         | ✅ Complete (see caveat above) |
+| 13–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

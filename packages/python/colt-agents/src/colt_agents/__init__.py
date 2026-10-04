@@ -48,6 +48,13 @@ from colt_agents.research_agent import (
     ResearchDossier,
 )
 from colt_agents.runtime import AgentRuntime
+from colt_agents.signal_agent import AGENT_NAME as SIGNAL_AGENT_NAME
+from colt_agents.signal_agent import AGENT_VERSION as SIGNAL_AGENT_VERSION
+from colt_agents.signal_agent import (
+    SIGNAL_AGENT_DEFINITION,
+    SignalAgentInput,
+    SignalAgentOutput,
+)
 from colt_agents.tool import Tool
 
 __version__ = "0.1.0"
@@ -65,6 +72,9 @@ __all__ = [
     "RESEARCH_AGENT_DEFINITION",
     "RESEARCH_AGENT_NAME",
     "RESEARCH_AGENT_VERSION",
+    "SIGNAL_AGENT_DEFINITION",
+    "SIGNAL_AGENT_NAME",
+    "SIGNAL_AGENT_VERSION",
     "AgentDefinition",
     "AgentError",
     "AgentOutputValidationError",
@@ -87,6 +97,8 @@ __all__ = [
     "PromptNotFoundError",
     "ResearchAgentInput",
     "ResearchDossier",
+    "SignalAgentInput",
+    "SignalAgentOutput",
     "Tool",
     "ToolCallRepository",
     "ToolNotPermittedError",

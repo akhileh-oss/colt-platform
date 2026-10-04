@@ -14,6 +14,10 @@ Provider adapters implementing the domain-facing ports (CLAUDE.md §28, §16.1's
   `search_people`/`enrich_company`/`enrich_person`). `FakeEnrichmentProvider` is the configured
   default; `ApolloEnrichmentProvider` is a real adapter, verified against Apollo's own API
   documentation, with bounded retry on rate limits.
+- `colt_integrations.signals` — the `SignalTriggerSource` port (`poll() -> list[
+SignalTriggerPayload]`). `FakeSignalTriggerSource` is the only adapter built so far — CLAUDE.md
+  names no specific real signal-source provider, and Milestone 12's acceptance criterion
+  explicitly accepts "a real/mock trigger."
 - `colt_integrations.errors` — `ProviderError` and its subtypes, with
   `classify_http_status()` mapping a provider's HTTP status to the right one, mirroring
   `colt_ai.errors.classify()`.

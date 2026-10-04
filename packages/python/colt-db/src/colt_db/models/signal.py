@@ -45,6 +45,7 @@ class SignalModel(IdentityMixin, Base):
     event_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     confidence: Mapped[float | None] = mapped_column(Float)
     summary: Mapped[str | None] = mapped_column(Text)
+    business_implication: Mapped[str | None] = mapped_column(Text)
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

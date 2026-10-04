@@ -26,5 +26,13 @@ confidence is at least as high as what is already stored. All four take plain sc
 arguments, never a `colt_integrations.enrichment` candidate object directly — this package
 depends only on `colt_domain`/`colt_policy`, never on the provider-adapter layer.
 
+`colt_application.signals.rank_signal()` (CLAUDE.md §12.6) is deterministic signal scoring: a
+pure function of `signal_type` (weighted by commercial urgency), `confidence`, and freshness
+decay (a shorter window than `research`'s, since a "why now" trigger loses relevance faster) —
+not a persisted column, reproducible from a `Signal` row's own fields alone. `RecordSignal`
+(the one use case `record_signal` calls) is a thinner wrapper than `RecordEvidence`:
+`signal_type`/`confidence`/`business_implication` are the model's own judgment, so nothing here
+is server-computed beyond persistence itself.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

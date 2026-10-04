@@ -26,6 +26,11 @@ from colt_integrations.search import (
     SearchProvider,
     SearchResult,
 )
+from colt_integrations.signals import (
+    FakeSignalTriggerSource,
+    SignalTriggerPayload,
+    SignalTriggerSource,
+)
 
 __version__ = "0.1.0"
 
@@ -36,6 +41,7 @@ __all__ = [
     "EnrichmentProvider",
     "FakeEnrichmentProvider",
     "FakeSearchProvider",
+    "FakeSignalTriggerSource",
     "FetchProvider",
     "FetchedDocument",
     "HttpFetchProvider",
@@ -51,6 +57,8 @@ __all__ = [
     "ProviderUnavailableError",
     "SearchProvider",
     "SearchResult",
+    "SignalTriggerPayload",
+    "SignalTriggerSource",
     "__version__",
     "classify_http_status",
     "html_to_text",

@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 10 — Research + Evidence: complete** (one acceptance step unverified — see below).
+**Milestone 11 — Discovery + Enrichment: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -61,13 +61,23 @@ PostgreSQL`. Its output schema, `ResearchDossier`, distinguishes `FACT` from `IN
 `HYPOTHESIS` claims (§12.5), and a Pydantic validator makes it structurally impossible to
 construct a `FACT` claim with no linked `evidence_id` — the acceptance criterion holds by
 construction, not merely by prompt instruction.
-**One caveat, carried from Milestones 08-09:** no real Anthropic API key exists in this
+
+`DiscoveryAgent` and `EnrichmentAgent` (`CLAUDE.md` §12.3-§12.4) are next: `DiscoveryAgent`
+finds candidate companies/people (`search_companies`/`search_people`, backed by an
+`EnrichmentProvider` — `FakeEnrichmentProvider` by default, a real `ApolloEnrichmentProvider`
+verified against Apollo's own API docs) and deduplicates every result against already-known
+records before creating anything, following `CLAUDE.md` §22's exact layered matching (provider
+ID, then normalized email/LinkedIn URL, then company + normalized name gated by a confidence
+threshold) — never on fuzzy name similarity. `EnrichmentAgent` resolves additional data for an
+already-known company or person, and never lets a lower-confidence provider result silently
+overwrite higher-confidence data already on file.
+**One caveat, carried from Milestones 08-10:** no real Anthropic API key exists in this
 environment, so every milestone built on `colt_ai.AnthropicGateway` proves its literal
 acceptance criterion against a fake response at the `AsyncAnthropic` client boundary, not a real
-network call. Every other line of the gateway's, runtime's, and this milestone's own logic
-(routing, usage accounting, error classification, telemetry, redaction, persistence, the real
-SSRF-safe HTTP fetch, source-verification logic) runs for real in those tests; only the actual
-provider round-trip is substituted.
+network call (no real Apollo API key exists either). Every other line of the gateway's,
+runtime's, and this milestone's own logic (routing, usage accounting, error classification,
+telemetry, redaction, persistence, identity resolution, confidence precedence) runs for real in
+those tests; only the actual provider round-trips are substituted.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -82,7 +92,8 @@ provider round-trip is substituted.
 | 08        | AI gateway                            | ✅ Complete (see caveat above) |
 | 09        | Agent runtime + tool registry         | ✅ Complete (see caveat above) |
 | 10        | Research + evidence                   | ✅ Complete (see caveat above) |
-| 11–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 11        | Discovery + enrichment                | ✅ Complete (see caveat above) |
+| 12–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

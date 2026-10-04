@@ -161,6 +161,7 @@ class EnrichmentSettings(BaseSettings):
     provider: str = "fake"
     api_key: SecretStr = SecretStr("")
     timeout_seconds: float = Field(default=20.0, gt=0)
+    max_retries: int = Field(default=2, ge=0)
 
 
 class ObservabilitySettings(BaseSettings):

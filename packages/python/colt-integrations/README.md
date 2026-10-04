@@ -10,6 +10,10 @@ Provider adapters implementing the domain-facing ports (CLAUDE.md §28, §16.1's
   SSRF-safe: every hop's resolved IP is checked against private/loopback/link-local/reserved/
   multicast ranges before the request is made, response size is capped, and HTML is normalized
   to plain text (`colt_integrations.fetch.normalize.html_to_text`).
+- `colt_integrations.enrichment` — the `EnrichmentProvider` port (`search_companies`/
+  `search_people`/`enrich_company`/`enrich_person`). `FakeEnrichmentProvider` is the configured
+  default; `ApolloEnrichmentProvider` is a real adapter, verified against Apollo's own API
+  documentation, with bounded retry on rate limits.
 - `colt_integrations.errors` — `ProviderError` and its subtypes, with
   `classify_http_status()` mapping a provider's HTTP status to the right one, mirroring
   `colt_ai.errors.classify()`.

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from colt_db.mappers import person_to_domain
 from colt_db.models.person import PersonModel
 from colt_db.tenancy import TenantScopedRepository
-from colt_domain import Person
+from colt_domain import EmailStatus, Person
 
 
 class SqlAlchemyPersonRepository(TenantScopedRepository):
@@ -23,7 +23,7 @@ class SqlAlchemyPersonRepository(TenantScopedRepository):
         seniority: str | None = None,
         department: str | None = None,
         email: str | None = None,
-        email_status: str | None = None,
+        email_status: EmailStatus | None = None,
         linkedin_url: str | None = None,
         location: str | None = None,
         source_metadata: dict[str, Any] | None = None,
@@ -38,7 +38,7 @@ class SqlAlchemyPersonRepository(TenantScopedRepository):
             seniority=seniority,
             department=department,
             email=email,
-            email_status=email_status,
+            email_status=email_status.value if email_status is not None else None,
             linkedin_url=linkedin_url,
             location=location,
             source_metadata=source_metadata or {},
@@ -52,3 +52,46 @@ class SqlAlchemyPersonRepository(TenantScopedRepository):
         stmt = self._select_scoped(PersonModel).where(PersonModel.id == person_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return person_to_domain(model) if model is not None else None
+
+    async def find_by_email(self, email: str) -> Person | None:
+        stmt = self._select_scoped(PersonModel).where(PersonModel.email == email)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return person_to_domain(model) if model is not None else None
+
+    async def find_by_linkedin_url(self, linkedin_url: str) -> Person | None:
+        stmt = self._select_scoped(PersonModel).where(PersonModel.linkedin_url == linkedin_url)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return person_to_domain(model) if model is not None else None
+
+    async def list_by_company(self, company_id: UUID) -> list[Person]:
+        """Identity resolution's §22 layer 4/5 (company + normalized name) compares in Python,
+        not SQL — `full_name` is stored as given, display-cased, with no normalized column to
+        index on, and a company's contact list is small enough that this is cheap."""
+        stmt = self._select_scoped(PersonModel).where(PersonModel.company_id == company_id)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [person_to_domain(model) for model in models]
+
+    async def find_by_provider_id(self, provider: str, provider_id: str) -> Person | None:
+        """Identity resolution's top-priority layer (`CLAUDE.md` §22) — see
+        `SqlAlchemyCompanyRepository.find_by_provider_id`."""
+        stmt = self._select_scoped(PersonModel).where(
+            PersonModel.source_metadata["provider"].astext == provider,
+            PersonModel.source_metadata["provider_id"].astext == provider_id,
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return person_to_domain(model) if model is not None else None
+
+    async def update(self, person_id: UUID, **fields: Any) -> Person:
+        """Set only the given fields; see `SqlAlchemyCompanyRepository.update`. `email_status`
+        is accepted as an `EmailStatus` and stored as its `.value`."""
+        stmt = self._select_scoped(PersonModel).where(PersonModel.id == person_id)
+        model = cast(PersonModel, (await self._session.execute(stmt)).scalar_one())
+        for key, value in fields.items():
+            if value is None:
+                continue
+            if key == "email_status" and isinstance(value, EmailStatus):
+                value = value.value
+            setattr(model, key, value)
+        await self._session.flush()
+        await self._session.refresh(model)
+        return person_to_domain(model)

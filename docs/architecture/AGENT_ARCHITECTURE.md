@@ -1,24 +1,25 @@
 # Agent architecture
 
 > Skeleton established in Milestone 00. The AI gateway (Milestone 08) and agent runtime
-> (Milestone 09) are built; Milestone 10 lands the first real product agent, `ResearchAgent`
-> (§8 below). The remaining nine (§12.2-§12.11) land in Milestones 11-21, each as an
-> `AgentDefinition` plus prompt plus tools registered against the runtime this document already
-> describes. Specification: `CLAUDE.md` §12-§16, §68.
+> (Milestone 09) are built; Milestone 10 landed the first real product agent, `ResearchAgent`
+> (§8), and Milestone 11 adds `DiscoveryAgent`/`EnrichmentAgent` (§9). The remaining seven
+> (§12.2, §12.6-§12.11) land in Milestones 12-21, each as an `AgentDefinition` plus prompt plus
+> tools registered against the runtime this document already describes. Specification:
+> `CLAUDE.md` §12-§16, §68.
 
 ## 1. Agents
 
-`colt_agents.RESEARCH_AGENT_DEFINITION` (`colt_agents.research_agent`) is the first of the ten
-product agents (`CLAUDE.md` §12) actually built — see §8. `StrategyAgent`, `DiscoveryAgent`,
-`EnrichmentAgent`, `SignalAgent`, `ScoringAgent`, `PersonalizationAgent`, `MessagingAgent`,
-`ReplyIntelligenceAgent`, `OpportunityAgent` remain for Milestones 11-21, each registering
-against the same mechanism Milestone 09 built: `colt_agents.AgentDefinition` (CLAUDE.md §12.1's
-contract — name, version, purpose, input/output schemas, allowed/forbidden tools, model policy,
-tool-call ceiling, timeout, evaluation suite — a plain frozen dataclass, not Pydantic, since it
-is written once in code and never crosses an external boundary). `colt_agents.
-EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product agent) — the same role
-`ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07) played for their own
-milestones.
+`colt_agents.RESEARCH_AGENT_DEFINITION` (§8), `DISCOVERY_AGENT_DEFINITION`, and
+`ENRICHMENT_AGENT_DEFINITION` (§9) are the three of the ten product agents (`CLAUDE.md` §12)
+actually built so far. `StrategyAgent`, `SignalAgent`, `ScoringAgent`, `PersonalizationAgent`,
+`MessagingAgent`, `ReplyIntelligenceAgent`, `OpportunityAgent` remain for Milestones 12-21, each
+registering against the same mechanism Milestone 09 built: `colt_agents.AgentDefinition`
+(CLAUDE.md §12.1's contract — name, version, purpose, input/output schemas, allowed/forbidden
+tools, model policy, tool-call ceiling, timeout, evaluation suite — a plain frozen dataclass,
+not Pydantic, since it is written once in code and never crosses an external boundary).
+`colt_agents.EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product agent) — the same
+role `ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07) played for their
+own milestones.
 
 ## 2. Runtime
 
@@ -143,3 +144,57 @@ those require independent corroboration or human review, mechanisms a later mile
 `VerificationStatus` (`UNVERIFIED` / `VERIFIED` / `STALE` / `DISPUTED` / `REJECTED`, §20) is a
 closed `StrEnum`, enforced in the database with a `CHECK` constraint alongside the application-
 level `Evidence.verification_status` type.
+
+## 9. DiscoveryAgent, EnrichmentAgent, and identity resolution (Milestone 11)
+
+`colt_agents.discovery_agent.DISCOVERY_AGENT_DEFINITION` (`CLAUDE.md` §12.3) finds candidate
+companies and people via `search_companies`/`search_people` (plus `search_web` from Milestone
+10 — exactly §12.3's allowed-tools list minus `search_news`/`search_jobs`, which nothing has
+built a tool for yet). `colt_agents.enrichment_agent.ENRICHMENT_AGENT_DEFINITION` (§12.4)
+resolves additional data for one already-known company or person via
+`enrich_company`/`enrich_person`; a `model_validator` on `EnrichmentAgentInput` requires
+exactly one target (a company or a person, never both, never neither) before the model can even
+submit the input.
+
+Both agents' tools wrap `colt_integrations.enrichment.EnrichmentProvider` (§2.7, §28.2) —
+`FakeEnrichmentProvider` is the configured default (no real enrichment-provider API key exists
+in this environment); `ApolloEnrichmentProvider` is a real adapter, verified against Apollo's
+own API documentation (organization/people search and enrich endpoints), including the detail
+that Apollo's people-search endpoint returns obfuscated contact fields (no email) until a
+specific person is "unlocked" via a match/enrich call — `DiscoveryAgent` never does that
+automatically, since spending a provider's enrichment credit is not implied by a search (§41.3:
+data minimization before a tool call).
+
+### Identity resolution (§22)
+
+`colt_application.use_cases.{DiscoverCompany,DiscoverPerson}` implement §22's exact layered
+matching before ever creating a row — a dedup hit returns the existing record unchanged, never
+merging on fuzzy name similarity (explicitly forbidden):
+
+1. exact `provider_id` (looked up against the `provider`/`provider_id` keys every discovered
+   record's `source_metadata` carries);
+2. normalized email (person only);
+3. normalized LinkedIn URL;
+4. company + normalized full name, gated by
+   `colt_application.identity.DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD` — a low-confidence
+   candidate is never allowed to match on name alone, however loosely.
+
+`colt_application.use_cases.{EnrichCompany,EnrichPerson}` apply §12.4's confidence rule at
+record level: an incoming candidate only overwrites a company's/person's enrichable fields when
+its own confidence is at least as high as whatever is stored in that record's
+`source_metadata.confidence` — a documented simplification (per-field confidence tracking is a
+natural follow-up, not a gap) that still satisfies "must not silently overwrite high-confidence
+data with lower-confidence provider data."
+
+All four use cases take plain scalar arguments, never a `colt_integrations.enrichment.
+{CompanyCandidate,PersonCandidate}` directly — `colt_application` depends only on
+`colt_domain`/`colt_policy` (§5), never on the provider-adapter layer; the typed tool (which
+depends on both) is what unpacks a provider-specific candidate into those arguments, the same
+separation `colt_agents.tools.record_evidence` already draws against `RecordEvidence`.
+
+`Person.email_status` (`CLAUDE.md` §16.1's `verify_email`) is `EmailStatus` (`UNVERIFIED` /
+`VALID` / `INVALID` / `RISKY` / `UNKNOWN`), the same closed-`StrEnum`-plus-database-`CHECK`
+pattern Milestone 10 established for `Evidence.verification_status`. `EnrichPerson` only ever
+sets `VALID` (a provider's own "verified" claim) or `UNKNOWN` (anything else) — never `INVALID`
+from an unconfirmed status alone, since "not confirmed" and "confirmed bad" are different
+claims.

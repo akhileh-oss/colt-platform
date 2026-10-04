@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from colt_db.models.agent_run import AgentRunModel
 from colt_db.models.audit_log import AuditLogModel
 from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
@@ -20,8 +21,11 @@ from colt_db.models.opportunity import OpportunityModel
 from colt_db.models.organization import OrganizationModel
 from colt_db.models.person import PersonModel
 from colt_db.models.signal import SignalModel
+from colt_db.models.tool_call import ToolCallModel
 from colt_db.models.user import UserModel
 from colt_domain import (
+    AgentRun,
+    AgentRunStatus,
     AuditLog,
     Campaign,
     Company,
@@ -38,6 +42,8 @@ from colt_domain import (
     PipelineStage,
     Role,
     Signal,
+    ToolCall,
+    ToolCallStatus,
     User,
     UserStatus,
 )
@@ -252,4 +258,48 @@ def audit_log_to_domain(model: AuditLogModel) -> AuditLog:
         created_at=model.created_at,
         request_id=model.request_id,
         trace_id=model.trace_id,
+    )
+
+
+def agent_run_to_domain(model: AgentRunModel) -> AgentRun:
+    return AgentRun(
+        id=model.id,
+        organization_id=model.organization_id,
+        agent_name=model.agent_name,
+        agent_version=model.agent_version,
+        model_name=model.model_name,
+        workflow_id=model.workflow_id,
+        workflow_run_id=model.workflow_run_id,
+        entity_type=model.entity_type,
+        entity_id=model.entity_id,
+        prompt_version=model.prompt_version,
+        input_hash=model.input_hash,
+        started_at=model.started_at,
+        completed_at=model.completed_at,
+        status=AgentRunStatus(model.status),
+        input_tokens=model.input_tokens,
+        output_tokens=model.output_tokens,
+        tool_tokens=model.tool_tokens,
+        estimated_cost_usd=model.estimated_cost_usd,
+        output_json=model.output_json,
+        error_code=model.error_code,
+        error_message=model.error_message,
+    )
+
+
+def tool_call_to_domain(model: ToolCallModel) -> ToolCall:
+    return ToolCall(
+        id=model.id,
+        agent_run_id=model.agent_run_id,
+        organization_id=model.organization_id,
+        tool_name=model.tool_name,
+        tool_version=model.tool_version,
+        arguments_redacted=model.arguments_redacted,
+        result_summary=model.result_summary,
+        provider=model.provider,
+        started_at=model.started_at,
+        completed_at=model.completed_at,
+        status=ToolCallStatus(model.status),
+        error_code=model.error_code,
+        latency_ms=model.latency_ms,
     )

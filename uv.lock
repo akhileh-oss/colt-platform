@@ -535,6 +535,7 @@ version = "0.1.0"
 source = { editable = "packages/python/colt-agents" }
 dependencies = [
     { name = "colt-ai" },
+    { name = "colt-application" },
     { name = "colt-domain" },
     { name = "colt-observability" },
 ]
@@ -542,6 +543,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "colt-ai", editable = "packages/python/colt-ai" },
+    { name = "colt-application", editable = "packages/python/colt-application" },
     { name = "colt-domain", editable = "packages/python/colt-domain" },
     { name = "colt-observability", editable = "packages/python/colt-observability" },
 ]

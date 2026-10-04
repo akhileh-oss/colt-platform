@@ -8,6 +8,8 @@ requires provider abstraction. Agents and application services call `AnthropicGa
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 import anthropic
 from anthropic import AsyncAnthropic
@@ -16,7 +18,7 @@ from pydantic import BaseModel
 
 from colt_ai.errors import GatewayErrorCode, GatewayInternalError, classify
 from colt_ai.pricing import estimate_cost_usd
-from colt_ai.usage import GenerationResult, Usage
+from colt_ai.usage import GenerationResult, RawMessage, Usage
 from colt_config import AnthropicSettings, ModelClass
 from colt_observability import get_logger, get_meter, get_tracer
 
@@ -67,6 +69,15 @@ class AnthropicGateway:
         self._settings = settings
         self._client = client if client is not None else create_client(settings)
 
+    def model_for(self, model_class: ModelClass) -> str:
+        """The concrete model ID `model_class` currently routes to (§14.1).
+
+        Exposed so a caller that must record the model before any call completes (an agent
+        runtime writing its `AgentRun` row before the first turn) doesn't need its own copy of
+        `AnthropicSettings` just to ask the same question this gateway already answers.
+        """
+        return self._settings.model_id_for(model_class)
+
     async def generate_structured[OutputT: BaseModel](
         self,
         *,
@@ -92,25 +103,106 @@ class AnthropicGateway:
         """
         model = self._settings.model_id_for(model_class)
         messages: list[MessageParam] = [{"role": "user", "content": prompt}]
-        start = time.monotonic()
 
+        async def invoke() -> Any:
+            return await self._client.messages.parse(
+                model=model,
+                max_tokens=max_tokens,
+                system=system if system is not None else anthropic.omit,
+                messages=messages,
+                output_format=output_model,
+            )
+
+        response, usage = await self._call(
+            operation="generate_structured",
+            model=model,
+            model_class=model_class,
+            agent_run_id=agent_run_id,
+            invoke=invoke,
+        )
+
+        if response.parsed_output is None:
+            raise GatewayInternalError(
+                f"model {model} did not return a response matching {output_model.__name__}"
+            )
+        return GenerationResult(
+            output=response.parsed_output, usage=usage, stop_reason=response.stop_reason
+        )
+
+    async def create_message(
+        self,
+        *,
+        model_class: ModelClass,
+        messages: list[MessageParam],
+        system: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        output_model: type[BaseModel] | None = None,
+        max_tokens: int = 4096,
+        agent_run_id: str | None = None,
+    ) -> RawMessage:
+        """Run one raw `messages.create()` turn, for callers that drive a tool-use loop
+        themselves (`colt_agents.AgentRuntime`) rather than wanting one validated final result.
+
+        Unlike `generate_structured`, this returns the SDK's own content blocks unparsed — the
+        caller needs to see `tool_use` blocks to decide whether to call a tool or stop, which
+        `messages.parse()`'s single-validated-result contract has no way to express. `tools`
+        and `output_model` may both be set in the same call (the Anthropic API supports this
+        directly): the model may still call a tool, but once it stops calling tools, its final
+        text response is constrained to `output_model`'s schema.
+        """
+        model = self._settings.model_id_for(model_class)
+
+        async def invoke() -> Any:
+            return await self._client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system if system is not None else anthropic.omit,
+                messages=messages,
+                tools=cast(Any, tools) if tools is not None else anthropic.omit,
+                output_config=(
+                    {"format": {"type": "json_schema", "schema": output_model.model_json_schema()}}
+                    if output_model is not None
+                    else anthropic.omit
+                ),
+            )
+
+        response, usage = await self._call(
+            operation="create_message",
+            model=model,
+            model_class=model_class,
+            agent_run_id=agent_run_id,
+            invoke=invoke,
+        )
+        return RawMessage(
+            content=list(response.content), stop_reason=response.stop_reason, usage=usage
+        )
+
+    async def _call(
+        self,
+        *,
+        operation: str,
+        model: str,
+        model_class: ModelClass,
+        agent_run_id: str | None,
+        invoke: Callable[[], Awaitable[Any]],
+    ) -> tuple[Any, Usage]:
+        """Shared call/error-classify/usage-record/telemetry path for every gateway method.
+
+        Deliberately never logs or traces call content — see `generate_structured`'s docstring
+        for why that is this file's one reliable redaction control (§35.1, §93).
+        """
+        start = time.monotonic()
         with _tracer.start_as_current_span(
-            "ai_gateway.generate_structured",
+            f"ai_gateway.{operation}",
             attributes={
                 "provider": "anthropic",
-                "operation": "generate_structured",
+                "operation": operation,
                 "model": model,
                 "model_class": str(model_class),
             },
         ) as span:
             try:
-                response = await self._client.messages.parse(
-                    model=model,
-                    max_tokens=max_tokens,
-                    system=system if system is not None else anthropic.omit,
-                    messages=messages,
-                    output_format=output_model,
-                )
+                response = await invoke()
             except anthropic.APIError as exc:
                 latency_ms = (time.monotonic() - start) * 1000
                 error = classify(exc)
@@ -121,7 +213,7 @@ class AnthropicGateway:
                 logger.warning(
                     "ai gateway call failed",
                     extra={
-                        "operation": "generate_structured",
+                        "operation": operation,
                         "provider": "anthropic",
                         "status": "error",
                         "error_code": str(error.code),
@@ -149,7 +241,7 @@ class AnthropicGateway:
             logger.info(
                 "ai gateway call completed",
                 extra={
-                    "operation": "generate_structured",
+                    "operation": operation,
                     "provider": "anthropic",
                     "status": "ok",
                     "latency_ms": latency_ms,
@@ -158,14 +250,7 @@ class AnthropicGateway:
                     "agent_run_id": agent_run_id,
                 },
             )
-
-            if response.parsed_output is None:
-                raise GatewayInternalError(
-                    f"model {model} did not return a response matching {output_model.__name__}"
-                )
-            return GenerationResult(
-                output=response.parsed_output, usage=usage, stop_reason=response.stop_reason
-            )
+            return response, usage
 
     def _record_usage(
         self,

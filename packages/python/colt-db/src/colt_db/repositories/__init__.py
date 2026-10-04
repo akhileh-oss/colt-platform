@@ -1,5 +1,6 @@
 """Concrete repository implementations over SQLAlchemy, behind colt-application's ports."""
 
+from colt_db.repositories.agent_run_repository import SqlAlchemyAgentRunRepository
 from colt_db.repositories.audit_log_repository import SqlAlchemyAuditLogRepository
 from colt_db.repositories.campaign_repository import SqlAlchemyCampaignRepository
 from colt_db.repositories.company_repository import SqlAlchemyCompanyRepository
@@ -11,9 +12,11 @@ from colt_db.repositories.opportunity_repository import SqlAlchemyOpportunityRep
 from colt_db.repositories.organization_repository import SqlAlchemyOrganizationRepository
 from colt_db.repositories.person_repository import SqlAlchemyPersonRepository
 from colt_db.repositories.signal_repository import SqlAlchemySignalRepository
+from colt_db.repositories.tool_call_repository import SqlAlchemyToolCallRepository
 from colt_db.repositories.user_repository import SqlAlchemyUserDirectory, SqlAlchemyUserRepository
 
 __all__ = [
+    "SqlAlchemyAgentRunRepository",
     "SqlAlchemyAuditLogRepository",
     "SqlAlchemyCampaignRepository",
     "SqlAlchemyCompanyRepository",
@@ -25,6 +28,7 @@ __all__ = [
     "SqlAlchemyOrganizationRepository",
     "SqlAlchemyPersonRepository",
     "SqlAlchemySignalRepository",
+    "SqlAlchemyToolCallRepository",
     "SqlAlchemyUserDirectory",
     "SqlAlchemyUserRepository",
 ]

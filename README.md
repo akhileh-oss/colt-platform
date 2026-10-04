@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 07 — Observability Foundation: complete.**
+**Milestone 08 — AI Gateway: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -42,17 +42,29 @@ page except the dashboard's system health panel is an honest placeholder — the
 and worker exist, but no route yet reads or writes through them, and the web app has no login
 flow yet, so there is little else real to show.
 
-| Milestone | Scope                                 | Status      |
-| --------- | ------------------------------------- | ----------- |
-| 00        | Repository bootstrap                  | ✅ Complete |
-| 01        | Local infrastructure (Docker Compose) | ✅ Complete |
-| 02        | FastAPI foundation                    | ✅ Complete |
-| 03        | Next.js foundation                    | ✅ Complete |
-| 04        | Authentication + multi-tenancy        | ✅ Complete |
-| 05        | Database + domain foundation          | ✅ Complete |
-| 06        | Temporal foundation                   | ✅ Complete |
-| 07        | Observability foundation              | ✅ Complete |
-| 08–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started |
+`colt_ai.AnthropicGateway` is the one place allowed to call the Anthropic SDK directly: it routes
+a `ModelClass` to a configured model ID, validates structured output against a Pydantic schema
+server-side, records usage and cost from every response, classifies provider errors into Colt's
+own error taxonomy, and never passes prompt or response content to a log line or span attribute.
+**One caveat:** no real Anthropic API key exists in this environment, so Milestone 08's literal
+acceptance criterion — "one deterministic test call produces a validated structured result and
+records usage metadata" — is proven against a fake response at the `AsyncAnthropic` client
+boundary, not a real network call to the Anthropic API. Every other line of the gateway's own
+logic (routing, usage accounting, error classification, telemetry, redaction) runs for real in
+that test; only the actual provider round-trip is substituted.
+
+| Milestone | Scope                                 | Status                         |
+| --------- | ------------------------------------- | ------------------------------ |
+| 00        | Repository bootstrap                  | ✅ Complete                    |
+| 01        | Local infrastructure (Docker Compose) | ✅ Complete                    |
+| 02        | FastAPI foundation                    | ✅ Complete                    |
+| 03        | Next.js foundation                    | ✅ Complete                    |
+| 04        | Authentication + multi-tenancy        | ✅ Complete                    |
+| 05        | Database + domain foundation          | ✅ Complete                    |
+| 06        | Temporal foundation                   | ✅ Complete                    |
+| 07        | Observability foundation              | ✅ Complete                    |
+| 08        | AI gateway                            | ✅ Complete (see caveat above) |
+| 09–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 
@@ -135,7 +147,7 @@ packages/
     colt-db/              SQLAlchemy models, repositories, migrations
     colt-policy/          Authorization and business-safety policy engine
     colt-observability/   Logging, tracing, metrics helpers
-    colt-ai/              AI gateway, model routing, usage accounting
+    colt-ai/              AI gateway: Anthropic client wrapper, model routing, usage accounting
   typescript/
     ui/                   Shared UI primitives
     api-client/           Typed API client generated from OpenAPI

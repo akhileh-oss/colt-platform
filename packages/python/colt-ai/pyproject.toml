@@ -5,7 +5,9 @@ description = "Colt AI gateway: model routing, usage and cost accounting."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "colt-config",
     "colt-observability",
+    "anthropic>=0.40",
 ]
 
 [build-system]

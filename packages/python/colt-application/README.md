@@ -34,5 +34,12 @@ not a persisted column, reproducible from a `Signal` row's own fields alone. `Re
 `signal_type`/`confidence`/`business_implication` are the model's own judgment, so nothing here
 is server-computed beyond persistence itself.
 
+`colt_application.scoring` (CLAUDE.md §21, §12.7) is the hybrid-score arithmetic: `compute_
+overall_score()` is §21's weighted baseline, named and versioned (`DEFAULT_SCORE_WEIGHTS`/
+`SCORE_MODEL_VERSION`); `determine_reason_codes()` and `determine_qualification()` are equally
+deterministic, the latter reusing `LeadStatus.QUALIFIED`/`NOT_QUALIFIED` rather than a
+scoring-specific vocabulary. `ScoreLead` persists one new, immutable `LeadScore` row (§10.8:
+"Do not overwrite scoring history") and transitions the `Lead`'s own status accordingly.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

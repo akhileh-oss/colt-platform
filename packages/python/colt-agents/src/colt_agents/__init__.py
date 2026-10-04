@@ -48,6 +48,13 @@ from colt_agents.research_agent import (
     ResearchDossier,
 )
 from colt_agents.runtime import AgentRuntime
+from colt_agents.scoring_agent import AGENT_NAME as SCORING_AGENT_NAME
+from colt_agents.scoring_agent import AGENT_VERSION as SCORING_AGENT_VERSION
+from colt_agents.scoring_agent import (
+    SCORING_AGENT_DEFINITION,
+    ScoringAgentInput,
+    ScoringAgentOutput,
+)
 from colt_agents.signal_agent import AGENT_NAME as SIGNAL_AGENT_NAME
 from colt_agents.signal_agent import AGENT_VERSION as SIGNAL_AGENT_VERSION
 from colt_agents.signal_agent import (
@@ -72,6 +79,9 @@ __all__ = [
     "RESEARCH_AGENT_DEFINITION",
     "RESEARCH_AGENT_NAME",
     "RESEARCH_AGENT_VERSION",
+    "SCORING_AGENT_DEFINITION",
+    "SCORING_AGENT_NAME",
+    "SCORING_AGENT_VERSION",
     "SIGNAL_AGENT_DEFINITION",
     "SIGNAL_AGENT_NAME",
     "SIGNAL_AGENT_VERSION",
@@ -97,6 +107,8 @@ __all__ = [
     "PromptNotFoundError",
     "ResearchAgentInput",
     "ResearchDossier",
+    "ScoringAgentInput",
+    "ScoringAgentOutput",
     "SignalAgentInput",
     "SignalAgentOutput",
     "Tool",

@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 12 — Signal Engine: complete** (one acceptance step unverified — see below).
+**Milestone 13 — Lead Scoring + Qualification: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -80,13 +80,22 @@ specific real signal-source provider) and records the single strongest one it fi
 deterministic computation. `colt_application.signals.rank_signal()` then scores it
 deterministically from its own stored fields (signal-type weight × confidence × freshness
 decay) — a pure function, not a persisted column, reproducible by anyone from the row alone.
-**One caveat, carried from Milestones 08-11:** no real Anthropic API key exists in this
+
+`ScoringAgent` (`CLAUDE.md` §12.7, §21) enforces §21's hybrid-scoring rule in code: the agent
+supplies only the two components that need judgment (`persona_fit`, `model_assessment`); three
+more (`icp_fit`, `signal_strength`, `timing`) arrive as already-known deterministic facts; and
+`score_lead` computes `overall_score` as §21's exact weighted baseline — never the model's own
+arithmetic — plus deterministic `reason_codes` and a qualification decision reusing `LeadStatus.
+QUALIFIED`/`NOT_QUALIFIED`. `LeadScore` (§10.8) is append-only — no `update()`, only `add()` —
+so a lead's full scoring history, each row attributable to the `model_version` that produced
+it, is never overwritten.
+**One caveat, carried from Milestones 08-12:** no real Anthropic API key exists in this
 environment, so every milestone built on `colt_ai.AnthropicGateway` proves its literal
 acceptance criterion against a fake response at the `AsyncAnthropic` client boundary, not a real
 network call (no real Apollo API key exists either). Every other line of the gateway's,
 runtime's, and this milestone's own logic (routing, usage accounting, error classification,
-telemetry, redaction, persistence, identity resolution, confidence precedence, ranking) runs
-for real in those tests; only the actual provider round-trips are substituted.
+telemetry, redaction, persistence, identity resolution, confidence precedence, ranking, scoring)
+runs for real in those tests; only the actual provider round-trips are substituted.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -103,7 +112,8 @@ for real in those tests; only the actual provider round-trips are substituted.
 | 10        | Research + evidence                   | ✅ Complete (see caveat above) |
 | 11        | Discovery + enrichment                | ✅ Complete (see caveat above) |
 | 12        | Signal engine                         | ✅ Complete (see caveat above) |
-| 13–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 13        | Lead scoring + qualification          | ✅ Complete (see caveat above) |
+| 14–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

@@ -13,17 +13,23 @@ import pytest
 
 from colt_application.errors import NotFoundError
 from colt_application.use_cases.get_lead import GetLead
-from colt_domain import Lead
+from colt_domain import Lead, LeadStatus
 
 NOW = datetime.now(UTC)
 
 
 class FakeLeadRepository:
+    """Only `get` is exercised; `update_status` exists purely so this structurally satisfies
+    the `LeadRepository` port."""
+
     def __init__(self, leads: list[Lead]) -> None:
         self._by_id = {lead.id: lead for lead in leads}
 
     async def get(self, lead_id: UUID) -> Lead | None:
         return self._by_id.get(lead_id)
+
+    async def update_status(self, lead_id: UUID, status: LeadStatus, *, at: datetime) -> Lead:
+        raise NotImplementedError
 
 
 def _lead(*, id: UUID | None = None) -> Lead:

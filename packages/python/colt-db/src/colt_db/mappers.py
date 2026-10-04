@@ -16,6 +16,7 @@ from colt_db.models.company import CompanyModel
 from colt_db.models.conversation import ConversationModel
 from colt_db.models.evidence import EvidenceModel
 from colt_db.models.lead import LeadModel
+from colt_db.models.lead_score import LeadScoreModel
 from colt_db.models.message import MessageModel
 from colt_db.models.opportunity import OpportunityModel
 from colt_db.models.organization import OrganizationModel
@@ -34,6 +35,7 @@ from colt_domain import (
     EmailStatus,
     Evidence,
     Lead,
+    LeadScore,
     LeadStatus,
     Message,
     Opportunity,
@@ -169,6 +171,24 @@ def lead_to_domain(model: LeadModel) -> Lead:
         priority=model.priority,
         created_at=model.created_at,
         updated_at=model.updated_at,
+    )
+
+
+def lead_score_to_domain(model: LeadScoreModel) -> LeadScore:
+    return LeadScore(
+        id=model.id,
+        organization_id=model.organization_id,
+        lead_id=model.lead_id,
+        model_version=model.model_version,
+        icp_fit=model.icp_fit,
+        persona_fit=model.persona_fit,
+        signal_strength=model.signal_strength,
+        timing=model.timing,
+        model_assessment=model.model_assessment,
+        overall_score=model.overall_score,
+        reason_codes=model.reason_codes,
+        confidence=model.confidence,
+        created_at=model.created_at,
     )
 
 

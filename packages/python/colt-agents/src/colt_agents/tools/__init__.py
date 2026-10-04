@@ -29,6 +29,7 @@ from colt_agents.tools.record_signal import (
     RecordSignalOutput,
     build_record_signal_tool,
 )
+from colt_agents.tools.score_lead import ScoreLeadInput, ScoreLeadOutput, build_score_lead_tool
 from colt_agents.tools.search_companies import (
     SearchCompaniesInput,
     SearchCompaniesOutput,
@@ -64,6 +65,8 @@ __all__ = [
     "RecordEvidenceOutput",
     "RecordSignalInput",
     "RecordSignalOutput",
+    "ScoreLeadInput",
+    "ScoreLeadOutput",
     "SearchCompaniesInput",
     "SearchCompaniesOutput",
     "SearchCompaniesResultItem",
@@ -80,6 +83,7 @@ __all__ = [
     "build_poll_signal_sources_tool",
     "build_record_evidence_tool",
     "build_record_signal_tool",
+    "build_score_lead_tool",
     "build_search_companies_tool",
     "build_search_people_tool",
     "build_search_web_tool",

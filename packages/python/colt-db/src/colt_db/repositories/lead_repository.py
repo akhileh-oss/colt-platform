@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import cast
 from uuid import UUID
 
 from colt_db.mappers import lead_to_domain
@@ -39,3 +41,12 @@ class SqlAlchemyLeadRepository(TenantScopedRepository):
         stmt = self._select_scoped(LeadModel).where(LeadModel.id == lead_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return lead_to_domain(model) if model is not None else None
+
+    async def update_status(self, lead_id: UUID, status: LeadStatus, *, at: datetime) -> Lead:
+        stmt = self._select_scoped(LeadModel).where(LeadModel.id == lead_id)
+        model = cast(LeadModel, (await self._session.execute(stmt)).scalar_one())
+        model.status = status.value
+        model.updated_at = at
+        await self._session.flush()
+        await self._session.refresh(model)
+        return lead_to_domain(model)

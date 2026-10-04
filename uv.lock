@@ -537,6 +537,7 @@ dependencies = [
     { name = "colt-ai" },
     { name = "colt-application" },
     { name = "colt-domain" },
+    { name = "colt-integrations" },
     { name = "colt-observability" },
 ]
 
@@ -545,6 +546,7 @@ requires-dist = [
     { name = "colt-ai", editable = "packages/python/colt-ai" },
     { name = "colt-application", editable = "packages/python/colt-application" },
     { name = "colt-domain", editable = "packages/python/colt-domain" },
+    { name = "colt-integrations", editable = "packages/python/colt-integrations" },
     { name = "colt-observability", editable = "packages/python/colt-observability" },
 ]
 
@@ -677,14 +679,18 @@ name = "colt-integrations"
 version = "0.1.0"
 source = { editable = "packages/python/colt-integrations" }
 dependencies = [
+    { name = "colt-config" },
     { name = "colt-domain" },
     { name = "colt-observability" },
+    { name = "httpx" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "colt-config", editable = "packages/python/colt-config" },
     { name = "colt-domain", editable = "packages/python/colt-domain" },
     { name = "colt-observability", editable = "packages/python/colt-observability" },
+    { name = "httpx", specifier = ">=0.28" },
 ]
 
 [[package]]

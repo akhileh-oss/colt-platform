@@ -20,6 +20,15 @@ from colt_agents.example_agent import (
 from colt_agents.ports import AgentRunRepository, ToolCallRepository
 from colt_agents.prompts import load_prompt
 from colt_agents.registry import ToolRegistry
+from colt_agents.research_agent import AGENT_NAME as RESEARCH_AGENT_NAME
+from colt_agents.research_agent import AGENT_VERSION as RESEARCH_AGENT_VERSION
+from colt_agents.research_agent import (
+    RESEARCH_AGENT_DEFINITION,
+    ClaimType,
+    DossierClaim,
+    ResearchAgentInput,
+    ResearchDossier,
+)
 from colt_agents.runtime import AgentRuntime
 from colt_agents.tool import Tool
 
@@ -29,16 +38,23 @@ __all__ = [
     "AGENT_NAME",
     "AGENT_VERSION",
     "EXAMPLE_AGENT_DEFINITION",
+    "RESEARCH_AGENT_DEFINITION",
+    "RESEARCH_AGENT_NAME",
+    "RESEARCH_AGENT_VERSION",
     "AgentDefinition",
     "AgentError",
     "AgentOutputValidationError",
     "AgentRunRepository",
     "AgentRuntime",
     "AgentTimeoutError",
+    "ClaimType",
+    "DossierClaim",
     "ExampleAgentInput",
     "ExampleAgentOutput",
     "MaxToolCallsExceededError",
     "PromptNotFoundError",
+    "ResearchAgentInput",
+    "ResearchDossier",
     "Tool",
     "ToolCallRepository",
     "ToolNotPermittedError",

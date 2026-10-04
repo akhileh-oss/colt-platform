@@ -46,6 +46,7 @@ from colt_domain import (
     ToolCallStatus,
     User,
     UserStatus,
+    VerificationStatus,
 )
 
 
@@ -149,7 +150,7 @@ def evidence_to_domain(model: EvidenceModel) -> Evidence:
         observed_at=model.observed_at,
         excerpt=model.excerpt,
         confidence=model.confidence,
-        verification_status=model.verification_status,
+        verification_status=VerificationStatus(model.verification_status),
         created_at=model.created_at,
     )
 

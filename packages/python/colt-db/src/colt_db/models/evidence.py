@@ -10,6 +10,9 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from colt_db.base import Base, IdentityMixin
+from colt_domain import VerificationStatus
+
+_VALID_VERIFICATION_STATUSES = tuple(s.value for s in VerificationStatus)
 
 
 class EvidenceModel(IdentityMixin, Base):
@@ -18,6 +21,10 @@ class EvidenceModel(IdentityMixin, Base):
         CheckConstraint(
             "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
             name="valid_confidence",
+        ),
+        CheckConstraint(
+            f"verification_status IN {_VALID_VERIFICATION_STATUSES}",
+            name="valid_verification_status",
         ),
     )
 
@@ -39,7 +46,7 @@ class EvidenceModel(IdentityMixin, Base):
     excerpt: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[float | None] = mapped_column(Float)
     verification_status: Mapped[str] = mapped_column(
-        String(50), nullable=False, server_default="UNVERIFIED"
+        String(50), nullable=False, server_default=VerificationStatus.UNVERIFIED.value
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

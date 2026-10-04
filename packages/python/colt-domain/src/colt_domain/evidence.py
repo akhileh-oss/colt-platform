@@ -3,14 +3,27 @@
 Evidence is polymorphic (`entity_type` + `entity_id`, e.g. a Company or a Signal) rather than a
 foreign key to one table, since any evidence-bearing entity can be a claim's subject. Every
 outbound claim must trace to one of these, never an invented source (§2.6).
+
+`VerificationStatus` is §20's closed set, added in Milestone 10 alongside the first real source
+verification logic (`colt_application.use_cases.record_evidence`) — Milestone 05 left this field
+a plain string because nothing yet computed anything beyond the `UNVERIFIED` default.
 """
 
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+
+class VerificationStatus(StrEnum):
+    UNVERIFIED = "UNVERIFIED"
+    VERIFIED = "VERIFIED"
+    STALE = "STALE"
+    DISPUTED = "DISPUTED"
+    REJECTED = "REJECTED"
 
 
 class Evidence(BaseModel):
@@ -29,7 +42,7 @@ class Evidence(BaseModel):
     observed_at: datetime
     excerpt: str | None = None
     confidence: float | None = None
-    verification_status: str = "UNVERIFIED"
+    verification_status: VerificationStatus = VerificationStatus.UNVERIFIED
     created_at: datetime
 
     @field_validator("entity_type")

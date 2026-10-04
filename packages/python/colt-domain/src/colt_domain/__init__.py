@@ -19,6 +19,7 @@ from colt_domain.roles import (
     permissions_for,
     role_has_permission,
 )
+from colt_domain.sequence_step import SequenceStep
 from colt_domain.signal import Signal
 from colt_domain.tool_call import ToolCall, ToolCallStatus
 from colt_domain.user import User, UserStatus
@@ -48,6 +49,7 @@ __all__ = [
     "Person",
     "PipelineStage",
     "Role",
+    "SequenceStep",
     "Signal",
     "ToolCall",
     "ToolCallStatus",

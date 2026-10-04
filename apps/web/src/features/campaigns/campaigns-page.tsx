@@ -10,10 +10,12 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader, PageSkeleton } from "@/components/page-header";
 import {
   type Campaign,
+  useAddSequenceStep,
   useCampaigns,
   useCreateCampaign,
   usePauseCampaign,
   useResumeCampaign,
+  useSequenceSteps,
   useValidateCampaign,
 } from "@/hooks/use-campaigns";
 
@@ -25,10 +27,132 @@ const STATUS_BADGE_VARIANT: Record<Campaign["status"], "secondary" | "success" |
   ARCHIVED: "secondary",
 };
 
+function SequenceSteps({ campaignId }: { campaignId: string }) {
+  const { data: steps, isLoading } = useSequenceSteps(campaignId);
+  const addStep = useAddSequenceStep(campaignId);
+  const [channel, setChannel] = useState("");
+  const [strategy, setStrategy] = useState("");
+
+  const nextOrder = steps?.length ?? 0;
+
+  const handleAdd = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!channel.trim() || !strategy.trim()) return;
+    addStep.mutate(
+      {
+        step_order: nextOrder,
+        channel: channel.trim(),
+        message_strategy: strategy.trim(),
+        delay_after_previous: 0,
+        active: true,
+      },
+      {
+        onSuccess: () => {
+          setChannel("");
+          setStrategy("");
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <p className="mb-2 text-xs font-medium text-muted-foreground">Sequence steps</p>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading…</p>
+      ) : steps && steps.length > 0 ? (
+        <ol className="mb-2 space-y-1 text-sm">
+          {steps.map((step) => (
+            <li key={step.id} className="flex items-center gap-2">
+              <span className="text-muted-foreground">#{step.step_order}</span>
+              <Badge variant="outline">{step.channel}</Badge>
+              <span className="truncate text-muted-foreground">{step.message_strategy}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mb-2 text-xs text-muted-foreground">No steps yet.</p>
+      )}
+      <form className="flex flex-wrap items-end gap-2" onSubmit={handleAdd}>
+        <input
+          className="h-8 w-32 rounded-md border border-input bg-background px-2 text-xs"
+          onChange={(event) => setChannel(event.target.value)}
+          placeholder="channel"
+          value={channel}
+        />
+        <input
+          className="h-8 w-56 rounded-md border border-input bg-background px-2 text-xs"
+          onChange={(event) => setStrategy(event.target.value)}
+          placeholder="message strategy"
+          value={strategy}
+        />
+        <Button disabled={addStep.isPending} size="sm" type="submit" variant="outline">
+          Add step #{nextOrder}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function CampaignCard({
+  campaign,
+  onValidate,
+  onPause,
+  onResume,
+  isValidating,
+  isPausing,
+  isResuming,
+}: {
+  campaign: Campaign;
+  onValidate: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  isValidating: boolean;
+  isPausing: boolean;
+  isResuming: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{campaign.name}</span>
+              <Badge variant={STATUS_BADGE_VARIANT[campaign.status]}>{campaign.status}</Badge>
+            </div>
+            {campaign.objective ? (
+              <p className="text-sm text-muted-foreground">{campaign.objective}</p>
+            ) : null}
+          </div>
+          <div className="flex gap-2">
+            {campaign.status === "DRAFT" && (
+              <Button disabled={isValidating} onClick={onValidate} size="sm" variant="outline">
+                Validate
+              </Button>
+            )}
+            {campaign.status === "ACTIVE" && (
+              <Button disabled={isPausing} onClick={onPause} size="sm" variant="outline">
+                Pause
+              </Button>
+            )}
+            {campaign.status === "PAUSED" && (
+              <Button disabled={isResuming} onClick={onResume} size="sm" variant="outline">
+                Resume
+              </Button>
+            )}
+          </div>
+        </div>
+        <SequenceSteps campaignId={campaign.id} />
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
- * The Campaign engine's UI (CLAUDE.md §10.9, §68 Milestone 14): create a draft, validate it
- * into an active campaign, pause/resume it, and inspect its definition — the frontend half of
- * the same lifecycle `tests/integration/test_campaign_engine.py` proves against real Postgres.
+ * The Campaign engine's UI (CLAUDE.md §10.9, §10.10, §68 Milestone 14): create a draft,
+ * validate it into an active campaign, pause/resume it, add/inspect its sequence steps — the
+ * frontend half of the same lifecycle `tests/integration/test_campaign_engine.py` proves
+ * against real Postgres.
  *
  * Real data end to end, through the typed `@colt/api-client` generated from the live OpenAPI
  * schema — but this page cannot be exercised live in this environment: there is no Keycloak
@@ -131,53 +255,15 @@ export function CampaignsPage() {
         <ul className="space-y-3">
           {campaigns.map((campaign) => (
             <li key={campaign.id}>
-              <Card>
-                <CardContent className="flex items-center justify-between gap-4 py-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{campaign.name}</span>
-                      <Badge variant={STATUS_BADGE_VARIANT[campaign.status]}>
-                        {campaign.status}
-                      </Badge>
-                    </div>
-                    {campaign.objective ? (
-                      <p className="text-sm text-muted-foreground">{campaign.objective}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex gap-2">
-                    {campaign.status === "DRAFT" && (
-                      <Button
-                        disabled={validateCampaign.isPending}
-                        onClick={() => validateCampaign.mutate(campaign.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Validate
-                      </Button>
-                    )}
-                    {campaign.status === "ACTIVE" && (
-                      <Button
-                        disabled={pauseCampaign.isPending}
-                        onClick={() => pauseCampaign.mutate(campaign.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Pause
-                      </Button>
-                    )}
-                    {campaign.status === "PAUSED" && (
-                      <Button
-                        disabled={resumeCampaign.isPending}
-                        onClick={() => resumeCampaign.mutate(campaign.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Resume
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <CampaignCard
+                campaign={campaign}
+                isPausing={pauseCampaign.isPending}
+                isResuming={resumeCampaign.isPending}
+                isValidating={validateCampaign.isPending}
+                onPause={() => pauseCampaign.mutate(campaign.id)}
+                onResume={() => resumeCampaign.mutate(campaign.id)}
+                onValidate={() => validateCampaign.mutate(campaign.id)}
+              />
             </li>
           ))}
         </ul>

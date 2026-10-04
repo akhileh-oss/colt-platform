@@ -33,6 +33,7 @@ from colt_application.signals import (
     STALE_SIGNAL_DECAY_FACTOR,
     rank_signal,
 )
+from colt_application.use_cases.add_sequence_step import AddSequenceStep
 from colt_application.use_cases.create_campaign import CreateCampaign
 from colt_application.use_cases.discover_company import DiscoverCompany
 from colt_application.use_cases.discover_person import DiscoverPerson
@@ -41,6 +42,7 @@ from colt_application.use_cases.enrich_person import EnrichPerson
 from colt_application.use_cases.get_campaign import GetCampaign
 from colt_application.use_cases.get_lead import GetLead
 from colt_application.use_cases.list_campaigns import ListCampaigns
+from colt_application.use_cases.list_sequence_steps import ListSequenceSteps
 from colt_application.use_cases.pause_campaign import PauseCampaign
 from colt_application.use_cases.record_evidence import RecordEvidence
 from colt_application.use_cases.record_signal import RecordSignal
@@ -66,6 +68,7 @@ __all__ = [
     "SCORE_MODEL_VERSION",
     "SIGNAL_TYPE_WEIGHTS",
     "STALE_SIGNAL_DECAY_FACTOR",
+    "AddSequenceStep",
     "ApplicationError",
     "CampaignValidationError",
     "CreateCampaign",
@@ -77,6 +80,7 @@ __all__ = [
     "GetLead",
     "InvalidCampaignTransitionError",
     "ListCampaigns",
+    "ListSequenceSteps",
     "NotFoundError",
     "OrganizationContext",
     "OrganizationContextError",

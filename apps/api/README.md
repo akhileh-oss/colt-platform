@@ -26,7 +26,10 @@ the caller's own `organization_id`. `CAMPAIGN_WRITE` gates creating a campaign; 
 gates the three state-changing actions — a deliberate split from `CAMPAIGN_READ`
 (`colt_domain.roles.DEFAULT_ROLE_PERMISSIONS`). `errors.py`'s taxonomy gained `ConflictError`
 (409) for an `InvalidCampaignTransitionError`; `CampaignValidationError` maps to the existing
-`ValidationError` (422), carrying every failing rule in `details.issues`.
+`ValidationError` (422), carrying every failing rule in `details.issues`. The same module also
+nests `POST`/`GET /campaigns/{id}/sequence-steps` — `CAMPAIGN_WRITE`-gated to add, `CAMPAIGN_
+READ`-gated to list — closing a gap Milestone 14's own Build list named but this PR initially
+missed: a `SequenceStep` entity (CLAUDE.md §10.10), not just Campaign's flat `channels` list.
 
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request

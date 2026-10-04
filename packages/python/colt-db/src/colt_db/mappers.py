@@ -21,6 +21,7 @@ from colt_db.models.message import MessageModel
 from colt_db.models.opportunity import OpportunityModel
 from colt_db.models.organization import OrganizationModel
 from colt_db.models.person import PersonModel
+from colt_db.models.sequence_step import SequenceStepModel
 from colt_db.models.signal import SignalModel
 from colt_db.models.tool_call import ToolCallModel
 from colt_db.models.user import UserModel
@@ -45,6 +46,7 @@ from colt_domain import (
     Person,
     PipelineStage,
     Role,
+    SequenceStep,
     Signal,
     ToolCall,
     ToolCallStatus,
@@ -206,6 +208,22 @@ def campaign_to_domain(model: CampaignModel) -> Campaign:
         schedule=model.schedule,
         limits=model.limits,
         approval_policy=model.approval_policy,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+def sequence_step_to_domain(model: SequenceStepModel) -> SequenceStep:
+    return SequenceStep(
+        id=model.id,
+        organization_id=model.organization_id,
+        campaign_id=model.campaign_id,
+        step_order=model.step_order,
+        channel=model.channel,
+        delay_after_previous=model.delay_after_previous,
+        message_strategy=model.message_strategy,
+        conditions=model.conditions,
+        active=model.active,
         created_at=model.created_at,
         updated_at=model.updated_at,
     )

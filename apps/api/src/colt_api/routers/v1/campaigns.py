@@ -32,19 +32,21 @@ from colt_api.errors import ConflictError
 from colt_api.errors import NotFoundError as ApiNotFoundError
 from colt_api.errors import ValidationError as ApiValidationError
 from colt_application import (
+    AddSequenceStep,
     CampaignValidationError,
     CreateCampaign,
     GetCampaign,
     InvalidCampaignTransitionError,
     ListCampaigns,
+    ListSequenceSteps,
     NotFoundError,
     OrganizationContext,
     PauseCampaign,
     ResumeCampaign,
     ValidateCampaign,
 )
-from colt_db.repositories import SqlAlchemyCampaignRepository
-from colt_domain import Campaign, CampaignStatus, Permission
+from colt_db.repositories import SqlAlchemyCampaignRepository, SqlAlchemySequenceStepRepository
+from colt_domain import Campaign, CampaignStatus, Permission, SequenceStep
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -108,6 +110,49 @@ class CreateCampaignRequest(BaseModel):
     schedule: dict[str, Any] | None = None
     limits: dict[str, Any] | None = None
     approval_policy: dict[str, Any] | None = None
+
+
+class SequenceStepResponse(BaseModel):
+    id: UUID
+    organization_id: UUID
+    campaign_id: UUID
+    step_order: int
+    channel: str
+    delay_after_previous: int
+    message_strategy: str
+    conditions: dict[str, Any]
+    active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, step: SequenceStep) -> SequenceStepResponse:
+        return cls(
+            id=step.id,
+            organization_id=step.organization_id,
+            campaign_id=step.campaign_id,
+            step_order=step.step_order,
+            channel=step.channel,
+            delay_after_previous=step.delay_after_previous,
+            message_strategy=step.message_strategy,
+            conditions=step.conditions,
+            active=step.active,
+            created_at=step.created_at,
+            updated_at=step.updated_at,
+        )
+
+
+class SequenceStepListResponse(BaseModel):
+    sequence_steps: list[SequenceStepResponse]
+
+
+class AddSequenceStepRequest(BaseModel):
+    step_order: int
+    channel: str
+    message_strategy: str
+    delay_after_previous: int = 0
+    conditions: dict[str, Any] | None = None
+    active: bool = True
 
 
 @router.post(
@@ -193,6 +238,49 @@ async def pause_campaign(
         raise ConflictError(str(exc)) from exc
     await session.commit()
     return CampaignResponse.from_domain(campaign)
+
+
+@router.post(
+    "/{campaign_id}/sequence-steps",
+    response_model=SequenceStepResponse,
+    status_code=201,
+    summary="Add a sequence step to a campaign",
+)
+async def add_sequence_step(
+    campaign_id: UUID,
+    request: AddSequenceStepRequest,
+    principal: WritePrincipalDep,
+    session: DbSessionDep,
+) -> SequenceStepResponse:
+    campaigns = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    sequence_steps = SqlAlchemySequenceStepRepository(session, principal.organization.id)
+    try:
+        step = await AddSequenceStep(campaigns, sequence_steps)(
+            campaign_id=campaign_id, **request.model_dump()
+        )
+    except NotFoundError as exc:
+        raise ApiNotFoundError(str(exc)) from exc
+    await session.commit()
+    return SequenceStepResponse.from_domain(step)
+
+
+@router.get(
+    "/{campaign_id}/sequence-steps",
+    response_model=SequenceStepListResponse,
+    summary="List a campaign's sequence steps, in order",
+)
+async def list_sequence_steps(
+    campaign_id: UUID, principal: ReadPrincipalDep, session: DbSessionDep
+) -> SequenceStepListResponse:
+    campaigns = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    sequence_steps = SqlAlchemySequenceStepRepository(session, principal.organization.id)
+    try:
+        steps = await ListSequenceSteps(campaigns, sequence_steps)(campaign_id)
+    except NotFoundError as exc:
+        raise ApiNotFoundError(str(exc)) from exc
+    return SequenceStepListResponse(
+        sequence_steps=[SequenceStepResponse.from_domain(step) for step in steps]
+    )
 
 
 @router.post(

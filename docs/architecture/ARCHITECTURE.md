@@ -108,7 +108,10 @@ principal aliases, constructs a `SqlAlchemyCampaignRepository` scoped to the cal
 organization, and drives a `colt_application` use case — the router itself holds no business
 logic, same as every other module in this package. `Campaign`'s state machine (`DRAFT →
 ACTIVE → PAUSED/COMPLETED/ARCHIVED`) is this milestone's own design decision: `CLAUDE.md` §11
-defines one for Lead, Conversation and Opportunity but is silent on Campaign.
+defines one for Lead, Conversation and Opportunity but is silent on Campaign. The same router
+nests `SequenceStep` (§10.10) under `/campaigns/{id}/sequence-steps` — a table and resource
+this milestone's own Build list names separately from Campaign's `channels` list, caught
+missing on review and closed in the same PR.
 
 ### Database engine and connection pooling
 

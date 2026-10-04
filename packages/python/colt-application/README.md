@@ -57,5 +57,13 @@ require the campaign be specifically `DRAFT` or `PAUSED` respectively — not me
 transition table, and letting either use case accept both would let `ResumeCampaign` resurrect
 an unvalidated draft, or `ValidateCampaign` re-run checks against an already-launched campaign.
 
+`AddSequenceStep`/`ListSequenceSteps` (CLAUDE.md §10.10, Milestone 14) close a gap this
+milestone's own build caught on review: CLAUDE.md defines a full `SequenceStep` entity and
+Milestone 14's Build list names "sequence steps" as its own deliverable, separate from
+Campaign's `channels` list — initially missed, fixed in the same PR rather than deferred. Both
+use cases check the parent campaign exists in this organization first, so an unknown
+`campaign_id` surfaces as the same `NotFoundError` every other use case raises for a missing
+parent, not a raw database `IntegrityError` or a silently-empty list.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

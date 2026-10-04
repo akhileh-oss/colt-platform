@@ -73,6 +73,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/sequence-steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a campaign's sequence steps, in order */
+        get: operations["list_sequence_steps_api_v1_campaigns__campaign_id__sequence_steps_get"];
+        put?: never;
+        /** Add a sequence step to a campaign */
+        post: operations["add_sequence_step_api_v1_campaigns__campaign_id__sequence_steps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/validate": {
         parameters: {
             query?: never;
@@ -207,6 +225,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddSequenceStepRequest */
+        AddSequenceStepRequest: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Channel */
+            channel: string;
+            /** Conditions */
+            conditions?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Delay After Previous
+             * @default 0
+             */
+            delay_after_previous: number;
+            /** Message Strategy */
+            message_strategy: string;
+            /** Step Order */
+            step_order: number;
+        };
         /** CampaignListResponse */
         CampaignListResponse: {
             /** Campaigns */
@@ -414,6 +455,53 @@ export interface components {
          * @enum {string}
          */
         Role: "OWNER" | "ADMIN" | "MANAGER" | "SALES" | "MARKETING" | "VIEWER" | "SERVICE_AGENT";
+        /** SequenceStepListResponse */
+        SequenceStepListResponse: {
+            /** Sequence Steps */
+            sequence_steps: components["schemas"]["SequenceStepResponse"][];
+        };
+        /** SequenceStepResponse */
+        SequenceStepResponse: {
+            /** Active */
+            active: boolean;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Channel */
+            channel: string;
+            /** Conditions */
+            conditions: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Delay After Previous */
+            delay_after_previous: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Message Strategy */
+            message_strategy: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Step Order */
+            step_order: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** TraceCheckRequest */
         TraceCheckRequest: {
             /**
@@ -639,6 +727,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_sequence_steps_api_v1_campaigns__campaign_id__sequence_steps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceStepListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_sequence_step_api_v1_campaigns__campaign_id__sequence_steps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSequenceStepRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceStepResponse"];
                 };
             };
             /** @description Validation error */

@@ -112,7 +112,10 @@ also the first real DB-backed CRUD REST resource in the API (`POST`/`GET /campai
 `CAMPAIGN_LAUNCH` (validate/pause/resume) rather than one blanket permission, and the first real
 frontend feature page beyond the dashboard's system health panel. No Anthropic call exists
 anywhere in this milestone — there is nothing to leave unverified; its acceptance criterion is
-proven in full against real Postgres.
+proven in full against real Postgres. `SequenceStep` (`CLAUDE.md` §10.10) is a real table and
+nested resource too (`/campaigns/{id}/sequence-steps`) — Milestone 14's own Build list names
+"sequence steps" as its own deliverable, separate from Campaign's `channels` list, so this
+milestone's review caught and closed that gap in the same PR rather than deferring it.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |

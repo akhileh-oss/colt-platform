@@ -199,3 +199,67 @@ def test_the_full_lifecycle_validate_pause_resume_over_http(app: FastAPI, org_id
         resumed = client.post(f"/api/v1/campaigns/{campaign_id}/resume", headers=headers)
         assert resumed.status_code == 200
         assert resumed.json()["status"] == "ACTIVE"
+
+
+def test_sequence_steps_can_be_added_and_are_listed_in_order(app: FastAPI, org_id: UUID) -> None:
+    _as(app, org_id, role=Role.MANAGER)
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer whatever"}
+        created = client.post("/api/v1/campaigns", json=_FULLY_CONFIGURED, headers=headers)
+        campaign_id = created.json()["id"]
+
+        second = client.post(
+            f"/api/v1/campaigns/{campaign_id}/sequence-steps",
+            json={
+                "step_order": 1,
+                "channel": "linkedin",
+                "message_strategy": "Follow-up",
+                "delay_after_previous": 2880,
+            },
+            headers=headers,
+        )
+        assert second.status_code == 201
+        assert second.json()["campaign_id"] == campaign_id
+
+        first = client.post(
+            f"/api/v1/campaigns/{campaign_id}/sequence-steps",
+            json={"step_order": 0, "channel": "email", "message_strategy": "Opener"},
+            headers=headers,
+        )
+        assert first.status_code == 201
+
+        listed = client.get(f"/api/v1/campaigns/{campaign_id}/sequence-steps", headers=headers)
+
+    assert listed.status_code == 200
+    steps = listed.json()["sequence_steps"]
+    assert [s["step_order"] for s in steps] == [0, 1]
+    assert [s["channel"] for s in steps] == ["email", "linkedin"]
+
+
+def test_adding_a_sequence_step_requires_campaign_write_not_just_read(
+    app: FastAPI, org_id: UUID
+) -> None:
+    _as(app, org_id, role=Role.MANAGER)
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer whatever"}
+        created = client.post("/api/v1/campaigns", json=_FULLY_CONFIGURED, headers=headers)
+        campaign_id = created.json()["id"]
+
+    _as(app, org_id, role=Role.SALES)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post(
+            f"/api/v1/campaigns/{campaign_id}/sequence-steps",
+            json={"step_order": 0, "channel": "email", "message_strategy": "Opener"},
+            headers={"Authorization": "Bearer whatever"},
+        )
+    assert response.status_code == 403
+
+
+def test_listing_sequence_steps_404s_for_an_unknown_campaign(app: FastAPI, org_id: UUID) -> None:
+    _as(app, org_id, role=Role.VIEWER)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(
+            f"/api/v1/campaigns/{uuid4()}/sequence-steps",
+            headers={"Authorization": "Bearer whatever"},
+        )
+    assert response.status_code == 404

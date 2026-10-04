@@ -23,13 +23,16 @@ from colt_application.errors import (
     InvalidCampaignTransitionError,
     NotFoundError,
 )
+from colt_application.use_cases.add_sequence_step import AddSequenceStep
 from colt_application.use_cases.create_campaign import CreateCampaign
 from colt_application.use_cases.get_campaign import GetCampaign
 from colt_application.use_cases.list_campaigns import ListCampaigns
+from colt_application.use_cases.list_sequence_steps import ListSequenceSteps
 from colt_application.use_cases.pause_campaign import PauseCampaign
 from colt_application.use_cases.resume_campaign import ResumeCampaign
 from colt_application.use_cases.validate_campaign import ValidateCampaign
 from colt_db.repositories.campaign_repository import SqlAlchemyCampaignRepository
+from colt_db.repositories.sequence_step_repository import SqlAlchemySequenceStepRepository
 from colt_domain import CampaignStatus
 
 NOW = datetime.now(UTC)
@@ -151,6 +154,76 @@ async def test_getting_a_campaign_that_does_not_exist_raises_not_found(
         repo = await SqlAlchemyCampaignRepository.create(session, org_a)
         with pytest.raises(NotFoundError):
             await GetCampaign(repo)(uuid4())
+
+
+@pytest.mark.asyncio
+async def test_sequence_steps_can_be_added_to_a_campaign_and_listed_in_order(
+    open_app_session: Any, two_organizations: tuple[Any, Any]
+) -> None:
+    org_a, org_b = two_organizations
+
+    session = await open_app_session()
+    async with session, session.begin():
+        campaigns = await SqlAlchemyCampaignRepository.create(session, org_a)
+        campaign = await CreateCampaign(campaigns)(name="Q4 outbound")
+
+    session = await open_app_session()
+    async with session, session.begin():
+        campaigns = await SqlAlchemyCampaignRepository.create(session, org_a)
+        sequence_steps = SqlAlchemySequenceStepRepository(session, org_a)
+        add_step = AddSequenceStep(campaigns, sequence_steps)
+        # Added out of order to prove listing sorts by `step_order`, not insertion order.
+        await add_step(
+            campaign_id=campaign.id,
+            step_order=1,
+            channel="linkedin",
+            message_strategy="Follow-up referencing the funding-round signal.",
+            delay_after_previous=2880,
+        )
+        await add_step(
+            campaign_id=campaign.id,
+            step_order=0,
+            channel="email",
+            message_strategy="Open with the strongest piece of verified evidence.",
+        )
+
+    session = await open_app_session()
+    async with session, session.begin():
+        campaigns = await SqlAlchemyCampaignRepository.create(session, org_a)
+        sequence_steps = SqlAlchemySequenceStepRepository(session, org_a)
+        steps = await ListSequenceSteps(campaigns, sequence_steps)(campaign.id)
+
+    assert [step.step_order for step in steps] == [0, 1]
+    assert [step.channel for step in steps] == ["email", "linkedin"]
+
+    # Invisible to a different organization, same as the campaign itself.
+    session = await open_app_session()
+    async with session, session.begin():
+        campaigns_b = await SqlAlchemyCampaignRepository.create(session, org_b)
+        sequence_steps_b = SqlAlchemySequenceStepRepository(session, org_b)
+        with pytest.raises(NotFoundError):
+            await ListSequenceSteps(campaigns_b, sequence_steps_b)(campaign.id)
+
+
+@pytest.mark.asyncio
+async def test_adding_a_sequence_step_to_an_unknown_campaign_raises_not_found(
+    open_app_session: Any, two_organizations: tuple[Any, Any]
+) -> None:
+    from uuid import uuid4
+
+    org_a, _ = two_organizations
+
+    session = await open_app_session()
+    async with session, session.begin():
+        campaigns = await SqlAlchemyCampaignRepository.create(session, org_a)
+        sequence_steps = SqlAlchemySequenceStepRepository(session, org_a)
+        with pytest.raises(NotFoundError):
+            await AddSequenceStep(campaigns, sequence_steps)(
+                campaign_id=uuid4(),
+                step_order=0,
+                channel="email",
+                message_strategy="N/A",
+            )
 
 
 @pytest.mark.asyncio

@@ -33,8 +33,11 @@ construct. `DISCOVERY_AGENT_DEFINITION`/`ENRICHMENT_AGENT_DEFINITION` (§12.3-§
 provider result overwrite higher-confidence data already on file. `SIGNAL_AGENT_DEFINITION`
 (§12.6) polls raw trigger events (`poll_signal_sources`) and records the strongest one
 (`record_signal`), which returns a deterministically computed `rank` right alongside the
-persisted `signal_id`. `EXAMPLE_AGENT_DEFINITION`/`build_get_lead_tool` remain as Milestone
-09's scaffolding.
+persisted `signal_id`. `SCORING_AGENT_DEFINITION` (§12.7, §21) supplies only the two
+judgment-requiring components (`persona_fit`, `model_assessment`) of a hybrid lead score;
+`score_lead` computes `overall_score`/`reason_codes`/qualification deterministically from all
+five, and appends to the lead's score history rather than overwriting it. `EXAMPLE_AGENT_DEFINITION`/
+`build_get_lead_tool` remain as Milestone 09's scaffolding.
 
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)
 for the full mechanism (permission filtering, persistence, redaction, the evidence pipeline),

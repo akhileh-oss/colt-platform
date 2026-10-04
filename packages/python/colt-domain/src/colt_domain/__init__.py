@@ -7,6 +7,7 @@ from colt_domain.company import Company
 from colt_domain.conversation import Conversation, ConversationState
 from colt_domain.evidence import Evidence, VerificationStatus
 from colt_domain.lead import Lead, LeadStatus
+from colt_domain.lead_score import LeadScore
 from colt_domain.message import Message
 from colt_domain.opportunity import Opportunity, PipelineStage
 from colt_domain.organization import Organization, OrganizationStatus
@@ -36,6 +37,7 @@ __all__ = [
     "EmailStatus",
     "Evidence",
     "Lead",
+    "LeadScore",
     "LeadStatus",
     "Message",
     "Opportunity",

@@ -2,24 +2,26 @@
 
 > Skeleton established in Milestone 00. The AI gateway (Milestone 08) and agent runtime
 > (Milestone 09) are built; Milestone 10 landed the first real product agent, `ResearchAgent`
-> (§8), Milestone 11 added `DiscoveryAgent`/`EnrichmentAgent` (§9), and Milestone 12 adds
-> `SignalAgent` (§10). The remaining six (§12.2, §12.7-§12.11) land in Milestones 13-21, each
-> as an `AgentDefinition` plus prompt plus tools registered against the runtime this document
-> already describes. Specification: `CLAUDE.md` §12-§16, §68.
+> (§8), Milestone 11 added `DiscoveryAgent`/`EnrichmentAgent` (§9), Milestone 12 added
+> `SignalAgent` (§10), and Milestone 13 adds `ScoringAgent` (§11). The remaining five (§12.2,
+> §12.8-§12.11) land in Milestones 14-21, each as an `AgentDefinition` plus prompt plus tools
+> registered against the runtime this document already describes. Specification: `CLAUDE.md`
+> §12-§16, §68.
 
 ## 1. Agents
 
 `colt_agents.RESEARCH_AGENT_DEFINITION` (§8), `DISCOVERY_AGENT_DEFINITION`/
-`ENRICHMENT_AGENT_DEFINITION` (§9), and `SIGNAL_AGENT_DEFINITION` (§10) are the four of the ten
-product agents (`CLAUDE.md` §12) actually built so far. `StrategyAgent`, `ScoringAgent`,
-`PersonalizationAgent`, `MessagingAgent`, `ReplyIntelligenceAgent`, `OpportunityAgent` remain for
-Milestones 13-21, each registering against the same mechanism Milestone 09 built:
-`colt_agents.AgentDefinition` (CLAUDE.md §12.1's contract — name, version, purpose, input/output
-schemas, allowed/forbidden tools, model policy, tool-call ceiling, timeout, evaluation suite —
-a plain frozen dataclass, not Pydantic, since it is written once in code and never crosses an
-external boundary). `colt_agents.EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product
-agent) — the same role `ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07)
-played for their own milestones.
+`ENRICHMENT_AGENT_DEFINITION` (§9), `SIGNAL_AGENT_DEFINITION` (§10), and
+`SCORING_AGENT_DEFINITION` (§11) are the five of the ten product agents (`CLAUDE.md` §12)
+actually built so far. `StrategyAgent`, `PersonalizationAgent`, `MessagingAgent`,
+`ReplyIntelligenceAgent`, `OpportunityAgent` remain for Milestones 14-21, each registering
+against the same mechanism Milestone 09 built: `colt_agents.AgentDefinition` (CLAUDE.md §12.1's
+contract — name, version, purpose, input/output schemas, allowed/forbidden tools, model policy,
+tool-call ceiling, timeout, evaluation suite — a plain frozen dataclass, not Pydantic, since it
+is written once in code and never crosses an external boundary). `colt_agents.
+EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product agent) — the same role
+`ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07) played for their own
+milestones.
 
 ## 2. Runtime
 
@@ -230,3 +232,31 @@ signal whose `event_at`/`observed_at` is older than a 90-day threshold — short
 trigger loses relevance faster than a general business fact. `record_signal`'s tool handler
 computes `rank` immediately after persisting and returns it in the same response, so neither
 the model nor a caller ever has to re-derive it from raw fields themselves.
+
+## 11. ScoringAgent and the hybrid score (Milestone 13)
+
+`colt_agents.scoring_agent.SCORING_AGENT_DEFINITION` (`CLAUDE.md` §12.7, §21) is where §21's
+hybrid-scoring rule ("Do not allow LLM-only lead scoring. Use a hybrid score.") actually gets
+enforced in code. The agent is given three already-known deterministic figures — `icp_fit`,
+`signal_strength`, `timing` — and supplies only the two components that genuinely need
+judgment: `persona_fit` and `model_assessment`. Everything downstream of those five numbers —
+the weighted sum, the reason codes, and the qualification decision — is `score_lead`'s plain
+arithmetic (`colt_application.scoring`), never the model's: §12.7 is explicit that "the overall
+score must be reproducible from stored inputs" and that qualification must never be decided by
+"vibes" alone.
+
+`compute_overall_score()` is §21's example baseline verbatim (`icp_fit` 0.30, `persona_fit`
+0.20, `signal_strength` 0.20, `timing` 0.15, `model_assessment` 0.15), named and versioned as
+`DEFAULT_SCORE_WEIGHTS`/`SCORE_MODEL_VERSION` rather than inlined — "this weighting is
+configurable and must be versioned" (§21). `determine_reason_codes()` flags each weak
+(≤0.3)/strong (≥0.7) component by name and always includes whether the score met
+`QUALIFICATION_THRESHOLD`, deterministically from the same five inputs every time.
+`determine_qualification()` reuses `LeadStatus.QUALIFIED`/`NOT_QUALIFIED` — the funnel's
+existing closed vocabulary, not a scoring-specific one.
+
+`LeadScore` (§10.8) is deliberately append-only: no `updated_at` column, no `update()` method
+on `SqlAlchemyLeadScoreRepository`, only `add()` — "Do not overwrite scoring history. Use
+immutable or append-only score evaluations where practical." `ScoreLead` persists exactly one
+new `LeadScore` row per call and then transitions the `Lead`'s own `status` via the
+qualification decision (`LeadRepository.update_status()`, new this milestone) — every past
+evaluation stays queryable and attributable to the `model_version` that produced it.

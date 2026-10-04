@@ -49,3 +49,18 @@ class InvalidCampaignTransitionError(ApplicationError):
         super().__init__(f"Cannot transition a campaign from {current} to {target}.")
         self.current = current
         self.target = target
+
+
+class MessageValidationError(ApplicationError):
+    """Raised when a message's personalization fails Milestone 15's acceptance rule: "Generated
+    messages contain only supported factual personalization and retain evidence IDs."
+
+    Carries every failing rule, not just the first — same shape as `CampaignValidationError`.
+    Covers both an empty `evidence_ids` list (no personalization is "supported" with no
+    evidence at all) and an `evidence_ids` entry that does not resolve to a real `Evidence` row
+    in this organization (a model cannot assert support that was never actually recorded).
+    """
+
+    def __init__(self, issues: list[str]) -> None:
+        super().__init__("Message personalization is invalid: " + "; ".join(issues))
+        self.issues = issues

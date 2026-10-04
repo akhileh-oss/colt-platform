@@ -65,5 +65,19 @@ use cases check the parent campaign exists in this organization first, so an unk
 `campaign_id` surfaces as the same `NotFoundError` every other use case raises for a missing
 parent, not a raw database `IntegrityError` or a silently-empty list.
 
+`ListEvidenceForLead`/`SelectPersonalizationEvidence`/`DraftMessage`/`ListMessages` (CLAUDE.md
+§12.8-§12.9, Milestone 15) back the `PersonalizationAgent`/`MessagingAgent` pipeline.
+`SelectPersonalizationEvidence` raises `MessageValidationError` on an empty selection or on any
+`evidence_id` `ListEvidenceForLead` did not itself just return — the §12.8 "no unsupported
+personalization" rule enforced as a checked precondition, not a prompt instruction.
+`DraftMessage` re-runs that same validation against the real `EvidenceRepository` before calling
+`MessageRepository.add()`, since the evidence ids a tool call actually receives are model-decided
+input, not guaranteed to be the exact set a prior tool call already checked. `Message` rows are
+append-only "versions" per `(lead_id, sequence_step_id)` — the same reasoning that keeps
+`LeadScore` (§10.8) append-only: drafting again for the same pair adds a row, never overwrites
+one. `get_brand_voice()`/`DEFAULT_BRAND_VOICE` read `Organization.settings["brand_voice"]` with a
+documented in-code fallback — CLAUDE.md names brand voice as model input for §12.9 without
+specifying its storage, so this is this milestone's own documented design decision.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

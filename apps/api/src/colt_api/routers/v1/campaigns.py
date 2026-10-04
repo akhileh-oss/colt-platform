@@ -38,6 +38,7 @@ from colt_application import (
     GetCampaign,
     InvalidCampaignTransitionError,
     ListCampaigns,
+    ListMessages,
     ListSequenceSteps,
     NotFoundError,
     OrganizationContext,
@@ -45,13 +46,21 @@ from colt_application import (
     ResumeCampaign,
     ValidateCampaign,
 )
-from colt_db.repositories import SqlAlchemyCampaignRepository, SqlAlchemySequenceStepRepository
-from colt_domain import Campaign, CampaignStatus, Permission, SequenceStep
+from colt_db.repositories import (
+    SqlAlchemyCampaignRepository,
+    SqlAlchemyMessageRepository,
+    SqlAlchemySequenceStepRepository,
+)
+from colt_domain import Campaign, CampaignStatus, Message, Permission, SequenceStep
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 #: `CAMPAIGN_WRITE` gates creating/editing a campaign's definition; `CAMPAIGN_READ` gates
 #: inspecting one; `CAMPAIGN_LAUNCH` gates controlling its live state (see module docstring).
+#: `MESSAGE_APPROVE` gates the message review list (Milestone 15) — there is no dedicated
+#: "read messages" permission in `colt_domain.roles`, and whoever can approve a message must
+#: certainly be able to see it first, so this is this milestone's own reasoned reuse rather
+#: than a new permission CLAUDE.md never names.
 ReadPrincipalDep = Annotated[
     OrganizationContext, Depends(require_permission(Permission.CAMPAIGN_READ))
 ]
@@ -60,6 +69,9 @@ WritePrincipalDep = Annotated[
 ]
 LaunchPrincipalDep = Annotated[
     OrganizationContext, Depends(require_permission(Permission.CAMPAIGN_LAUNCH))
+]
+MessageReviewPrincipalDep = Annotated[
+    OrganizationContext, Depends(require_permission(Permission.MESSAGE_APPROVE))
 ]
 
 
@@ -153,6 +165,41 @@ class AddSequenceStepRequest(BaseModel):
     delay_after_previous: int = 0
     conditions: dict[str, Any] | None = None
     active: bool = True
+
+
+class MessageResponse(BaseModel):
+    """The message review UI's read model (Milestone 15). Approve/reject actions are
+    Milestone 16's (Policy + Approval System) job — this is inspection only."""
+
+    id: UUID
+    campaign_id: UUID
+    lead_id: UUID
+    channel: str
+    subject: str | None
+    body: str
+    status: str
+    approval_status: str
+    evidence_ids: list[UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_domain(cls, message: Message) -> MessageResponse:
+        return cls(
+            id=message.id,
+            campaign_id=message.campaign_id,
+            lead_id=message.lead_id,
+            channel=message.channel,
+            subject=message.subject,
+            body=message.body,
+            status=message.status,
+            approval_status=message.approval_status,
+            evidence_ids=message.evidence_ids,
+            created_at=message.created_at,
+        )
+
+
+class MessageListResponse(BaseModel):
+    messages: list[MessageResponse]
 
 
 @router.post(
@@ -300,3 +347,20 @@ async def resume_campaign(
         raise ConflictError(str(exc)) from exc
     await session.commit()
     return CampaignResponse.from_domain(campaign)
+
+
+@router.get(
+    "/{campaign_id}/messages",
+    response_model=MessageListResponse,
+    summary="List a campaign's drafted messages for review",
+)
+async def list_messages(
+    campaign_id: UUID, principal: MessageReviewPrincipalDep, session: DbSessionDep
+) -> MessageListResponse:
+    campaigns = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    messages = SqlAlchemyMessageRepository(session, principal.organization.id)
+    try:
+        rows = await ListMessages(campaigns, messages)(campaign_id)
+    except NotFoundError as exc:
+        raise ApiNotFoundError(str(exc)) from exc
+    return MessageListResponse(messages=[MessageResponse.from_domain(row) for row in rows])

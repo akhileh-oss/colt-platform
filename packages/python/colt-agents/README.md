@@ -36,7 +36,14 @@ provider result overwrite higher-confidence data already on file. `SIGNAL_AGENT_
 persisted `signal_id`. `SCORING_AGENT_DEFINITION` (§12.7, §21) supplies only the two
 judgment-requiring components (`persona_fit`, `model_assessment`) of a hybrid lead score;
 `score_lead` computes `overall_score`/`reason_codes`/qualification deterministically from all
-five, and appends to the lead's score history rather than overwriting it. `EXAMPLE_AGENT_DEFINITION`/
+five, and appends to the lead's score history rather than overwriting it.
+`PERSONALIZATION_AGENT_DEFINITION`/`MESSAGING_AGENT_DEFINITION` (§12.8-§12.9) are next:
+`PersonalizationAgent` must call `list_evidence_for_lead` before `select_evidence`, which rejects
+any evidence id that call didn't just return (and an empty selection outright) — a strategy with
+no cited evidence is structurally impossible, not just discouraged by prompt. `MessagingAgent`'s
+one tool, `draft_message`, independently re-validates every evidence id against the real
+`EvidenceRepository` before persisting a `Message`, since the evidence ids it receives are not
+guaranteed to be the same set `select_evidence` already checked. `EXAMPLE_AGENT_DEFINITION`/
 `build_get_lead_tool` remain as Milestone 09's scaffolding.
 
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)

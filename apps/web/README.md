@@ -20,13 +20,13 @@ renders an honest placeholder rather than fabricated data.
 
 Every route in the primary nav renders. The dashboard's system health panel (real data from the
 `/live`/`/ready` probes, Milestone 02) and the Campaigns page (Milestone 14 — create, validate,
-pause, resume, list, and manage sequence steps, through the typed `@colt/api-client`) are
-backed by real data; every
-other panel and feature page is an explicit "not built yet," since there is no lead or message
-data until their milestones land (15–22). The Campaigns page cannot be exercised in a live
-browser session in this environment — there is no login flow yet, so every request 401s with no
-real bearer token to attach — but it is type-checked against the real generated OpenAPI schema,
-and the same request shapes are proven over HTTP by `apps/api/tests/test_colt_api_campaigns.py`.
+pause, resume, list, and manage sequence steps; Milestone 15 adds a read-only list of each
+campaign's drafted messages, through the typed `@colt/api-client`) are backed by real data;
+every other panel and feature page is an explicit "not built yet," since there is no lead data
+until later milestones land (16–22). The Campaigns page cannot be exercised in a live browser
+session in this environment — there is no login flow yet, so every request 401s with no real
+bearer token to attach — but it is type-checked against the real generated OpenAPI schema, and
+the same request shapes are proven over HTTP by `apps/api/tests/test_colt_api_campaigns.py`.
 
 ## Commands
 

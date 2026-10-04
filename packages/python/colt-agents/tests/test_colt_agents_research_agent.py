@@ -87,6 +87,12 @@ class FakeEvidenceRepository:
         self.rows[evidence.id] = evidence
         return evidence
 
+    async def get(self, evidence_id: UUID) -> Evidence | None:
+        raise NotImplementedError
+
+    async def list_by_entity(self, entity_type: str, entity_id: UUID) -> list[Evidence]:
+        raise NotImplementedError
+
 
 class FakeAgentRunRepository:
     def __init__(self) -> None:

@@ -263,3 +263,45 @@ def test_listing_sequence_steps_404s_for_an_unknown_campaign(app: FastAPI, org_i
             headers={"Authorization": "Bearer whatever"},
         )
     assert response.status_code == 404
+
+
+def test_listing_messages_returns_an_empty_list_for_a_campaign_with_no_messages_yet(
+    app: FastAPI, org_id: UUID
+) -> None:
+    _as(app, org_id, role=Role.MANAGER)
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer whatever"}
+        created = client.post("/api/v1/campaigns", json=_FULLY_CONFIGURED, headers=headers)
+        campaign_id = created.json()["id"]
+
+        response = client.get(f"/api/v1/campaigns/{campaign_id}/messages", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["messages"] == []
+
+
+def test_listing_messages_requires_message_approve_permission(app: FastAPI, org_id: UUID) -> None:
+    _as(app, org_id, role=Role.MANAGER)
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer whatever"}
+        created = client.post("/api/v1/campaigns", json=_FULLY_CONFIGURED, headers=headers)
+        campaign_id = created.json()["id"]
+
+    _as(app, org_id, role=Role.VIEWER)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(
+            f"/api/v1/campaigns/{campaign_id}/messages",
+            headers={"Authorization": "Bearer whatever"},
+        )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "POLICY_DENIED"
+
+
+def test_listing_messages_404s_for_an_unknown_campaign(app: FastAPI, org_id: UUID) -> None:
+    _as(app, org_id, role=Role.MANAGER)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(
+            f"/api/v1/campaigns/{uuid4()}/messages",
+            headers={"Authorization": "Bearer whatever"},
+        )
+    assert response.status_code == 404

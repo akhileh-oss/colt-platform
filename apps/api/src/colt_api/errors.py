@@ -115,6 +115,11 @@ class ValidationError(ColtError):
         super().__init__(ErrorCode.VALIDATION_ERROR, message, **kwargs)
 
 
+class ConflictError(ColtError):
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        super().__init__(ErrorCode.CONFLICT, message, **kwargs)
+
+
 class PolicyDeniedError(ColtError):
     def __init__(self, message: str, **kwargs: Any) -> None:
         super().__init__(ErrorCode.POLICY_DENIED, message, **kwargs)

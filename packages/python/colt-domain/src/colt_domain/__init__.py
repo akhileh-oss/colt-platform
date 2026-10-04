@@ -2,7 +2,7 @@
 
 from colt_domain.agent_run import AgentRun, AgentRunStatus
 from colt_domain.audit_log import AuditLog
-from colt_domain.campaign import Campaign
+from colt_domain.campaign import Campaign, CampaignStatus
 from colt_domain.company import Company
 from colt_domain.conversation import Conversation, ConversationState
 from colt_domain.evidence import Evidence, VerificationStatus
@@ -31,6 +31,7 @@ __all__ = [
     "AgentRunStatus",
     "AuditLog",
     "Campaign",
+    "CampaignStatus",
     "Company",
     "Conversation",
     "ConversationState",

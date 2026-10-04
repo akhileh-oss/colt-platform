@@ -14,5 +14,6 @@ export {
   type ErrorDetail,
   type ErrorResponse,
 } from "./errors";
+export type { components, paths } from "./generated/schema";
 
 export const VERSION = "0.1.0";

@@ -19,6 +19,15 @@ make api     # this application, with reload, on http://localhost:8000
 | `dependencies.py` | Dependency-injection conventions.                                     |
 | `routers/`        | `health` (probes) and `v1` (versioned product routes).                |
 
+`routers/v1/campaigns.py` (Milestone 14) is the first real DB-backed CRUD resource: `POST`/
+`GET /campaigns`, `GET /campaigns/{id}`, and the `validate`/`pause`/`resume` lifecycle actions,
+each driving a `colt_application` use case through a `SqlAlchemyCampaignRepository` bound to
+the caller's own `organization_id`. `CAMPAIGN_WRITE` gates creating a campaign; `CAMPAIGN_LAUNCH`
+gates the three state-changing actions — a deliberate split from `CAMPAIGN_READ`
+(`colt_domain.roles.DEFAULT_ROLE_PERMISSIONS`). `errors.py`'s taxonomy gained `ConflictError`
+(409) for an `InvalidCampaignTransitionError`; `CampaignValidationError` maps to the existing
+`ValidationError` (422), carrying every failing rule in `details.issues`.
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

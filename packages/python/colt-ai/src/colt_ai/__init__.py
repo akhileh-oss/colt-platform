@@ -16,7 +16,7 @@ from colt_ai.errors import (
     classify,
 )
 from colt_ai.pricing import ModelPricing, estimate_cost_usd
-from colt_ai.usage import GenerationResult, Usage
+from colt_ai.usage import GenerationResult, RawMessage, Usage
 
 __version__ = "0.1.0"
 
@@ -35,6 +35,7 @@ __all__ = [
     "GatewayTimeoutError",
     "GenerationResult",
     "ModelPricing",
+    "RawMessage",
     "Usage",
     "__version__",
     "classify",

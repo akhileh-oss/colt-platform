@@ -4,6 +4,7 @@ Import every model module here so Alembic's autogenerate (and `Base.metadata.cre
 tests) sees the full schema from one import.
 """
 
+from colt_db.models.agent_run import AgentRunModel
 from colt_db.models.audit_log import AuditLogModel
 from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
@@ -15,9 +16,11 @@ from colt_db.models.opportunity import OpportunityModel
 from colt_db.models.organization import OrganizationModel
 from colt_db.models.person import PersonModel
 from colt_db.models.signal import SignalModel
+from colt_db.models.tool_call import ToolCallModel
 from colt_db.models.user import UserModel
 
 __all__ = [
+    "AgentRunModel",
     "AuditLogModel",
     "CampaignModel",
     "CompanyModel",
@@ -29,5 +32,6 @@ __all__ = [
     "OrganizationModel",
     "PersonModel",
     "SignalModel",
+    "ToolCallModel",
     "UserModel",
 ]

@@ -1,5 +1,6 @@
 """Entities, value objects, enumerations, invariants and deterministic business rules."""
 
+from colt_domain.agent_run import AgentRun, AgentRunStatus
 from colt_domain.audit_log import AuditLog
 from colt_domain.campaign import Campaign
 from colt_domain.company import Company
@@ -18,12 +19,15 @@ from colt_domain.roles import (
     role_has_permission,
 )
 from colt_domain.signal import Signal
+from colt_domain.tool_call import ToolCall, ToolCallStatus
 from colt_domain.user import User, UserStatus
 
 __version__ = "0.1.0"
 
 __all__ = [
     "DEFAULT_ROLE_PERMISSIONS",
+    "AgentRun",
+    "AgentRunStatus",
     "AuditLog",
     "Campaign",
     "Company",
@@ -41,6 +45,8 @@ __all__ = [
     "PipelineStage",
     "Role",
     "Signal",
+    "ToolCall",
+    "ToolCallStatus",
     "User",
     "UserStatus",
     "__version__",

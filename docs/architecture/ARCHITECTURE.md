@@ -209,6 +209,14 @@ test call produces a validated structured result and records usage metadata" —
 way, against a fake response, not a real Anthropic API call: no real API key exists in this
 environment.** See the Milestone 08 PR for what that leaves unverified.
 
+Milestone 09 added `AnthropicGateway.create_message()` alongside `generate_structured()`: the
+same call/error-classify/usage-record/telemetry path (factored into a shared `_call()` helper
+once a second method needed it), but returning the SDK's own unparsed content blocks rather than
+one validated result — what a tool-use loop needs to see a `tool_use` block and decide whether
+to call a tool or stop. `colt_agents.AgentRuntime` is that loop; see
+[`docs/architecture/AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) for how it drives tools and
+persists its audit trail.
+
 ## 8. Frontend
 
 `apps/web` is a Next.js App Router application under `src/`, laid out per `CLAUDE.md` §43:

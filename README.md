@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 08 — AI Gateway: complete** (one acceptance step unverified — see below).
+**Milestone 09 — Agent Runtime + Tool Registry: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -46,12 +46,18 @@ flow yet, so there is little else real to show.
 a `ModelClass` to a configured model ID, validates structured output against a Pydantic schema
 server-side, records usage and cost from every response, classifies provider errors into Colt's
 own error taxonomy, and never passes prompt or response content to a log line or span attribute.
-**One caveat:** no real Anthropic API key exists in this environment, so Milestone 08's literal
-acceptance criterion — "one deterministic test call produces a validated structured result and
-records usage metadata" — is proven against a fake response at the `AsyncAnthropic` client
-boundary, not a real network call to the Anthropic API. Every other line of the gateway's own
-logic (routing, usage accounting, error classification, telemetry, redaction) runs for real in
-that test; only the actual provider round-trip is substituted.
+`colt_agents.AgentRuntime` builds on it with a real tool-use loop: a typed tool (`colt_agents.
+Tool`) is data — a name, a Pydantic schema, an async handler — and `ToolRegistry.for_agent`
+statically filters which tools an agent's model call ever sees, before any model call happens.
+Every run becomes one `AgentRun` row and one `ToolCall` row per tool invocation, written whether
+the run succeeds or fails — a real, independently-queryable audit trail, not a log line. The one
+tool built so far, `get_lead`, proves the full required path for real:
+`Claude → Typed Tool → Application Service (colt_application.GetLead) → Repository → PostgreSQL`.
+**One caveat, carried from Milestone 08:** no real Anthropic API key exists in this environment,
+so both milestones' literal acceptance criteria are proven against a fake response at the
+`AsyncAnthropic` client boundary, not a real network call. Every other line of the gateway's and
+runtime's own logic (routing, usage accounting, error classification, telemetry, redaction,
+persistence) runs for real in those tests; only the actual provider round-trip is substituted.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -64,7 +70,8 @@ that test; only the actual provider round-trip is substituted.
 | 06        | Temporal foundation                   | ✅ Complete                    |
 | 07        | Observability foundation              | ✅ Complete                    |
 | 08        | AI gateway                            | ✅ Complete (see caveat above) |
-| 09–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 09        | Agent runtime + tool registry         | ✅ Complete (see caveat above) |
+| 10–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

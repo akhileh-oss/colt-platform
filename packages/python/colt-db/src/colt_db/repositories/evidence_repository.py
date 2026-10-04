@@ -8,7 +8,7 @@ from uuid import UUID
 from colt_db.mappers import evidence_to_domain
 from colt_db.models.evidence import EvidenceModel
 from colt_db.tenancy import TenantScopedRepository
-from colt_domain import Evidence
+from colt_domain import Evidence, VerificationStatus
 
 
 class SqlAlchemyEvidenceRepository(TenantScopedRepository):
@@ -24,7 +24,7 @@ class SqlAlchemyEvidenceRepository(TenantScopedRepository):
         source_date: date | None = None,
         excerpt: str | None = None,
         confidence: float | None = None,
-        verification_status: str = "UNVERIFIED",
+        verification_status: VerificationStatus = VerificationStatus.UNVERIFIED,
     ) -> Evidence:
         model = EvidenceModel(
             organization_id=self.organization_id,
@@ -37,7 +37,7 @@ class SqlAlchemyEvidenceRepository(TenantScopedRepository):
             observed_at=observed_at,
             excerpt=excerpt,
             confidence=confidence,
-            verification_status=verification_status,
+            verification_status=verification_status.value,
         )
         self._session.add(model)
         await self._session.flush()

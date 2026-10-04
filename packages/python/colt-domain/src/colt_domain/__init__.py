@@ -5,7 +5,7 @@ from colt_domain.audit_log import AuditLog
 from colt_domain.campaign import Campaign
 from colt_domain.company import Company
 from colt_domain.conversation import Conversation, ConversationState
-from colt_domain.evidence import Evidence
+from colt_domain.evidence import Evidence, VerificationStatus
 from colt_domain.lead import Lead, LeadStatus
 from colt_domain.message import Message
 from colt_domain.opportunity import Opportunity, PipelineStage
@@ -49,6 +49,7 @@ __all__ = [
     "ToolCallStatus",
     "User",
     "UserStatus",
+    "VerificationStatus",
     "__version__",
     "permissions_for",
     "role_has_permission",

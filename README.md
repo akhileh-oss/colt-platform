@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 09 — Agent Runtime + Tool Registry: complete** (one acceptance step unverified — see below).
+**Milestone 10 — Research + Evidence: complete** (one acceptance step unverified — see below).
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -50,14 +50,24 @@ own error taxonomy, and never passes prompt or response content to a log line or
 Tool`) is data — a name, a Pydantic schema, an async handler — and `ToolRegistry.for_agent`
 statically filters which tools an agent's model call ever sees, before any model call happens.
 Every run becomes one `AgentRun` row and one `ToolCall` row per tool invocation, written whether
-the run succeeds or fails — a real, independently-queryable audit trail, not a log line. The one
-tool built so far, `get_lead`, proves the full required path for real:
-`Claude → Typed Tool → Application Service (colt_application.GetLead) → Repository → PostgreSQL`.
-**One caveat, carried from Milestone 08:** no real Anthropic API key exists in this environment,
-so both milestones' literal acceptance criteria are proven against a fake response at the
-`AsyncAnthropic` client boundary, not a real network call. Every other line of the gateway's and
-runtime's own logic (routing, usage accounting, error classification, telemetry, redaction,
-persistence) runs for real in those tests; only the actual provider round-trip is substituted.
+the run succeeds or fails — a real, independently-queryable audit trail, not a log line.
+
+`colt_agents.research_agent.RESEARCH_AGENT_DEFINITION` is the first of the ten product agents
+(`CLAUDE.md` §12) actually built: given a company, it searches the web (`search_web`), fetches
+pages (`fetch_page`, a real, SSRF-safe `HttpFetchProvider`), and records sourced claims as
+`Evidence` rows (`record_evidence`, backed by `colt_application.RecordEvidence`) — proving the
+full required path for real: `Claude → Typed Tool → Application Service → Repository →
+PostgreSQL`. Its output schema, `ResearchDossier`, distinguishes `FACT` from `INFERENCE` from
+`HYPOTHESIS` claims (§12.5), and a Pydantic validator makes it structurally impossible to
+construct a `FACT` claim with no linked `evidence_id` — the acceptance criterion holds by
+construction, not merely by prompt instruction.
+**One caveat, carried from Milestones 08-09:** no real Anthropic API key exists in this
+environment, so every milestone built on `colt_ai.AnthropicGateway` proves its literal
+acceptance criterion against a fake response at the `AsyncAnthropic` client boundary, not a real
+network call. Every other line of the gateway's, runtime's, and this milestone's own logic
+(routing, usage accounting, error classification, telemetry, redaction, persistence, the real
+SSRF-safe HTTP fetch, source-verification logic) runs for real in those tests; only the actual
+provider round-trip is substituted.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -71,7 +81,8 @@ persistence) runs for real in those tests; only the actual provider round-trip i
 | 07        | Observability foundation              | ✅ Complete                    |
 | 08        | AI gateway                            | ✅ Complete (see caveat above) |
 | 09        | Agent runtime + tool registry         | ✅ Complete (see caveat above) |
-| 10–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 10        | Research + evidence                   | ✅ Complete (see caveat above) |
+| 11–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

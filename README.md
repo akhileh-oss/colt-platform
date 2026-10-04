@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 14 — Campaign Engine: complete.**
+**Milestone 15 — Personalization + Messaging: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -117,6 +117,27 @@ nested resource too (`/campaigns/{id}/sequence-steps`) — Milestone 14's own Bu
 "sequence steps" as its own deliverable, separate from Campaign's `channels` list, so this
 milestone's review caught and closed that gap in the same PR rather than deferring it.
 
+`PersonalizationAgent` and `MessagingAgent` (`CLAUDE.md` §12.8-§12.9, Milestone 15) turn a lead
+and its recorded `Evidence` into a drafted outreach message, with "no unsupported personalization
+claims" enforced structurally rather than merely by prompt instruction: `PersonalizationAgent`
+must call `list_evidence_for_lead` before it can call `select_evidence`, and `select_evidence`
+(`colt_application.SelectPersonalizationEvidence`) rejects any `evidence_id` that use case didn't
+itself just return — an empty selection is rejected too, since a strategy with no cited evidence
+is exactly the forbidden behavior §12.8 names. `MessagingAgent` then drafts the message
+(`draft_message`, backed by `colt_application.DraftMessage`), independently re-validating every
+`evidence_id` against the real `EvidenceRepository` before persisting anything, since each tool
+call is model-decided input and the first validation does not guarantee the second tool call
+reuses the same set. `Message` rows are append-only "versions" per `(lead_id, sequence_step_id)`
+— drafting again for the same lead and step adds a new row rather than overwriting the last one,
+the same reasoning `LeadScore` (§10.8) already established. Brand voice is read from
+`Organization.settings["brand_voice"]`, falling back to a documented in-code default when unset —
+CLAUDE.md names brand voice as model input without specifying its storage, so this is this
+milestone's own documented design decision. The campaign router gained a read-only review
+endpoint, `GET /campaigns/{id}/messages`, gated by `MESSAGE_APPROVE` (reusing the existing
+permission rather than adding a redundant read-only one, since every role that can review a
+message already carries it) — approving or rejecting a draft is Milestone 16's job, this
+milestone only proves a message can be generated, persisted, and listed back out.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -134,7 +155,8 @@ milestone's review caught and closed that gap in the same PR rather than deferri
 | 12        | Signal engine                         | ✅ Complete (see caveat above) |
 | 13        | Lead scoring + qualification          | ✅ Complete (see caveat above) |
 | 14        | Campaign engine                       | ✅ Complete                    |
-| 15–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 15        | Personalization + messaging           | ✅ Complete (see caveat above) |
+| 16–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

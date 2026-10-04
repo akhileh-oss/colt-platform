@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a campaign's drafted messages for review */
+        get: operations["list_messages_api_v1_campaigns__campaign_id__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/pause": {
         parameters: {
             query?: never;
@@ -385,6 +402,50 @@ export interface components {
             organization: components["schemas"]["OrganizationSummary"];
             user: components["schemas"]["UserSummary"];
         };
+        /** MessageListResponse */
+        MessageListResponse: {
+            /** Messages */
+            messages: components["schemas"]["MessageResponse"][];
+        };
+        /**
+         * MessageResponse
+         * @description The message review UI's read model (Milestone 15). Approve/reject actions are
+         *     Milestone 16's (Policy + Approval System) job — this is inspection only.
+         */
+        MessageResponse: {
+            /** Approval Status */
+            approval_status: string;
+            /** Body */
+            body: string;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Channel */
+            channel: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lead Id
+             * Format: uuid
+             */
+            lead_id: string;
+            /** Status */
+            status: string;
+            /** Subject */
+            subject: string | null;
+        };
         /** MetaResponse */
         MetaResponse: {
             /**
@@ -647,6 +708,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_messages_api_v1_campaigns__campaign_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageListResponse"];
                 };
             };
             /** @description Validation error */

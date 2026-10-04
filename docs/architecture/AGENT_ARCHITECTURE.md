@@ -3,10 +3,10 @@
 > Skeleton established in Milestone 00. The AI gateway (Milestone 08) and agent runtime
 > (Milestone 09) are built; Milestone 10 landed the first real product agent, `ResearchAgent`
 > (§8), Milestone 11 added `DiscoveryAgent`/`EnrichmentAgent` (§9), Milestone 12 added
-> `SignalAgent` (§10), and Milestone 13 adds `ScoringAgent` (§11). The remaining five (§12.2,
-> §12.8-§12.11) land in Milestones 14-21, each as an `AgentDefinition` plus prompt plus tools
-> registered against the runtime this document already describes. Specification: `CLAUDE.md`
-> §12-§16, §68.
+> `SignalAgent` (§10), Milestone 13 added `ScoringAgent` (§11), and Milestone 15 adds
+> `PersonalizationAgent`/`MessagingAgent` (§12). The remaining three (§12.2, §12.10-§12.11) land
+> in Milestones 16-21, each as an `AgentDefinition` plus prompt plus tools registered against the
+> runtime this document already describes. Specification: `CLAUDE.md` §12-§16, §68.
 
 ## 1. Agents
 
@@ -260,3 +260,46 @@ immutable or append-only score evaluations where practical." `ScoreLead` persist
 new `LeadScore` row per call and then transitions the `Lead`'s own `status` via the
 qualification decision (`LeadRepository.update_status()`, new this milestone) — every past
 evaluation stays queryable and attributable to the `model_version` that produced it.
+
+## 12. PersonalizationAgent, MessagingAgent, and the evidence-gated draft (Milestone 15)
+
+`colt_agents.personalization_agent.PERSONALIZATION_AGENT_DEFINITION` and `colt_agents.
+messaging_agent.MESSAGING_AGENT_DEFINITION` (`CLAUDE.md` §12.8-§12.9) turn a lead's recorded
+`Evidence` into a drafted outreach message, split into two agents because they have two distinct
+forbidden behaviors to enforce: §12.8 forbids a personalization strategy with no cited evidence;
+§12.9 forbids a drafted message that claims something no cited evidence supports. Each is
+enforced structurally, not just by prompt instruction.
+
+`PersonalizationAgent` is allowed exactly two tools, `list_evidence_for_lead` and
+`select_evidence`, and the second depends on the first: `colt_application.
+SelectPersonalizationEvidence` raises `MessageValidationError` on an empty selection or on any
+`evidence_id` that `ListEvidenceForLead` did not itself just return for that lead's company/person.
+Its output, `PersonalizationStrategy`, is an ephemeral schema — not persisted, the same precedent
+`ResearchDossier` (Milestone 10) established for a structured result that exists only to hand
+judgment downstream — and a Pydantic validator rejects an empty `evidence_ids` list by
+construction, the same defense-in-depth `DossierClaim`'s `FACT`-needs-evidence validator already
+established.
+
+`MessagingAgent` is allowed one tool, `draft_message`, backed by `colt_application.DraftMessage`.
+It re-validates every `evidence_id` against the real `EvidenceRepository` itself, even though
+`select_evidence` already validated a selection upstream: each tool call is model-decided input,
+so the set `draft_message` actually receives is not guaranteed to be the same set
+`select_evidence` returned — the second check is not redundant, it is the only one that runs
+against what was actually about to be persisted. A rejected call returns a tool error (never a
+persisted `Message`) and the agent must retry with only evidence that exists.
+
+`Message` rows (§10.8's append-only pattern, extended) are "versions" per `(lead_id,
+sequence_step_id)`: `MessageRepository` has no `update()`, so drafting again for the same pair
+adds a new row rather than overwriting the last draft — the same reasoning that keeps `LeadScore`
+append-only applies here, since overwriting a prior draft would destroy the record of what was
+actually sent or reviewed before. Brand voice is read from `Organization.settings["brand_voice"]`
+via `colt_application.get_brand_voice()`, falling back to a documented in-code default
+(`DEFAULT_BRAND_VOICE`) when unset — `CLAUDE.md` names brand voice as model input for `§12.9`
+without specifying where it lives, so this milestone documents its own storage choice rather than
+leaving it implicit.
+
+The campaign router's `GET /campaigns/{id}/messages` (Milestone 15) is a read-only review list,
+gated by the existing `Permission.MESSAGE_APPROVE` rather than a new read-only permission — every
+role that can review a drafted message already carries it, so adding a second permission would
+only duplicate the gate. Approving, rejecting, or sending a draft is Milestone 16's job; this
+endpoint only proves a message can be generated, persisted, and listed back out.

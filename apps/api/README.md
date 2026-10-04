@@ -31,6 +31,12 @@ nests `POST`/`GET /campaigns/{id}/sequence-steps` — `CAMPAIGN_WRITE`-gated to 
 READ`-gated to list — closing a gap Milestone 14's own Build list named but this PR initially
 missed: a `SequenceStep` entity (CLAUDE.md §10.10), not just Campaign's flat `channels` list.
 
+`GET /campaigns/{id}/messages` (Milestone 15) lists a campaign's drafted `Message` rows,
+gated by `MESSAGE_APPROVE` — reused rather than paired with a new read-only permission, since
+every role that can review a message already carries it. It is the first route whose rows are
+only ever written by an agent pipeline (`PersonalizationAgent` → `MessagingAgent`) rather than
+by another HTTP request; the route itself still only calls `colt_application.ListMessages`.
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

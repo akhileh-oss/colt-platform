@@ -48,3 +48,10 @@ class SqlAlchemyEvidenceRepository(TenantScopedRepository):
         stmt = self._select_scoped(EvidenceModel).where(EvidenceModel.id == evidence_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return evidence_to_domain(model) if model is not None else None
+
+    async def list_by_entity(self, entity_type: str, entity_id: UUID) -> list[Evidence]:
+        stmt = self._select_scoped(EvidenceModel).where(
+            EvidenceModel.entity_type == entity_type, EvidenceModel.entity_id == entity_id
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [evidence_to_domain(model) for model in models]

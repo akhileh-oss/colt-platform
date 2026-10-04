@@ -65,3 +65,28 @@ class SqlAlchemyMessageRepository(TenantScopedRepository):
         )
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return message_to_domain(model) if model is not None else None
+
+    async def list_by_campaign(self, campaign_id: UUID) -> list[Message]:
+        stmt = (
+            self._select_scoped(MessageModel)
+            .where(MessageModel.campaign_id == campaign_id)
+            .order_by(MessageModel.created_at)
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [message_to_domain(model) for model in models]
+
+    async def list_by_lead_and_step(
+        self, lead_id: UUID, sequence_step_id: UUID | None
+    ) -> list[Message]:
+        """Every drafted "version" of a message for this lead/step, oldest first (Milestone 15:
+        `add()` never overwrites — see this port's own docstring)."""
+        stmt = (
+            self._select_scoped(MessageModel)
+            .where(
+                MessageModel.lead_id == lead_id,
+                MessageModel.sequence_step_id == sequence_step_id,
+            )
+            .order_by(MessageModel.created_at)
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [message_to_domain(model) for model in models]

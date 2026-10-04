@@ -113,6 +113,14 @@ nests `SequenceStep` (§10.10) under `/campaigns/{id}/sequence-steps` — a tabl
 this milestone's own Build list names separately from Campaign's `channels` list, caught
 missing on review and closed in the same PR.
 
+Milestone 15 adds `GET /campaigns/{id}/messages`, a read-only list of a campaign's drafted
+`Message` rows gated by `Permission.MESSAGE_APPROVE` — reusing that permission rather than
+adding a redundant read-only one, since every role that can review a message already carries it.
+It is the first route reached only after an agent pipeline (`PersonalizationAgent` →
+`MessagingAgent`, see [`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) §12) has already
+persisted the rows it lists; the route itself still holds no business logic, calling
+`colt_application.ListMessages` like every other router method here.
+
 ### Database engine and connection pooling
 
 `colt_db.session.get_default_engine()` uses `NullPool` — no connection reuse across checkouts —

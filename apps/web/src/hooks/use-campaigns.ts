@@ -10,9 +10,11 @@ export type Campaign = components["schemas"]["CampaignResponse"];
 export type CreateCampaignRequest = components["schemas"]["CreateCampaignRequest"];
 export type SequenceStep = components["schemas"]["SequenceStepResponse"];
 export type AddSequenceStepRequest = components["schemas"]["AddSequenceStepRequest"];
+export type DraftedMessage = components["schemas"]["MessageResponse"];
 
 const CAMPAIGNS_QUERY_KEY = ["campaigns"] as const;
 const sequenceStepsQueryKey = (campaignId: string) => ["campaigns", campaignId, "sequence-steps"];
+const messagesQueryKey = (campaignId: string) => ["campaigns", campaignId, "messages"];
 
 async function fetchCampaigns(): Promise<Campaign[]> {
   const { data, error } = await apiClient.GET("/api/v1/campaigns");
@@ -109,5 +111,22 @@ export function useAddSequenceStep(campaignId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: sequenceStepsQueryKey(campaignId) }),
+  });
+}
+
+/**
+ * A campaign's drafted messages, pending review (CLAUDE.md §12.9, §68 Milestone 15).
+ * Read-only here — approving or rejecting a draft is Milestone 16's job.
+ */
+export function useMessages(campaignId: string) {
+  return useQuery({
+    queryKey: messagesQueryKey(campaignId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET("/api/v1/campaigns/{campaign_id}/messages", {
+        params: { path: { campaign_id: campaignId } },
+      });
+      if (error) throw error;
+      return data.messages;
+    },
   });
 }

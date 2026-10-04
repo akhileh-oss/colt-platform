@@ -13,6 +13,7 @@ import {
   useAddSequenceStep,
   useCampaigns,
   useCreateCampaign,
+  useMessages,
   usePauseCampaign,
   useResumeCampaign,
   useSequenceSteps,
@@ -94,6 +95,36 @@ function SequenceSteps({ campaignId }: { campaignId: string }) {
   );
 }
 
+function DraftedMessages({ campaignId }: { campaignId: string }) {
+  const { data: messages, isLoading } = useMessages(campaignId);
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <p className="mb-2 text-xs font-medium text-muted-foreground">Drafted messages</p>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading…</p>
+      ) : messages && messages.length > 0 ? (
+        <ul className="space-y-2 text-sm">
+          {messages.map((message) => (
+            <li className="rounded-md border border-border p-2" key={message.id}>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{message.channel}</Badge>
+                <Badge variant="secondary">{message.approval_status}</Badge>
+                {message.subject ? (
+                  <span className="truncate font-medium">{message.subject}</span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-muted-foreground">{message.body}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">No messages drafted yet.</p>
+      )}
+    </div>
+  );
+}
+
 function CampaignCard({
   campaign,
   onValidate,
@@ -143,6 +174,7 @@ function CampaignCard({
           </div>
         </div>
         <SequenceSteps campaignId={campaign.id} />
+        <DraftedMessages campaignId={campaign.id} />
       </CardContent>
     </Card>
   );

@@ -35,6 +35,20 @@ from colt_agents.example_agent import (
     ExampleAgentInput,
     ExampleAgentOutput,
 )
+from colt_agents.messaging_agent import AGENT_NAME as MESSAGING_AGENT_NAME
+from colt_agents.messaging_agent import AGENT_VERSION as MESSAGING_AGENT_VERSION
+from colt_agents.messaging_agent import (
+    MESSAGING_AGENT_DEFINITION,
+    MessagingAgentInput,
+    MessagingAgentOutput,
+)
+from colt_agents.personalization_agent import AGENT_NAME as PERSONALIZATION_AGENT_NAME
+from colt_agents.personalization_agent import AGENT_VERSION as PERSONALIZATION_AGENT_VERSION
+from colt_agents.personalization_agent import (
+    PERSONALIZATION_AGENT_DEFINITION,
+    PersonalizationAgentInput,
+    PersonalizationStrategy,
+)
 from colt_agents.ports import AgentRunRepository, ToolCallRepository
 from colt_agents.prompts import load_prompt
 from colt_agents.registry import ToolRegistry
@@ -76,6 +90,12 @@ __all__ = [
     "ENRICHMENT_AGENT_NAME",
     "ENRICHMENT_AGENT_VERSION",
     "EXAMPLE_AGENT_DEFINITION",
+    "MESSAGING_AGENT_DEFINITION",
+    "MESSAGING_AGENT_NAME",
+    "MESSAGING_AGENT_VERSION",
+    "PERSONALIZATION_AGENT_DEFINITION",
+    "PERSONALIZATION_AGENT_NAME",
+    "PERSONALIZATION_AGENT_VERSION",
     "RESEARCH_AGENT_DEFINITION",
     "RESEARCH_AGENT_NAME",
     "RESEARCH_AGENT_VERSION",
@@ -104,6 +124,10 @@ __all__ = [
     "ExampleAgentInput",
     "ExampleAgentOutput",
     "MaxToolCallsExceededError",
+    "MessagingAgentInput",
+    "MessagingAgentOutput",
+    "PersonalizationAgentInput",
+    "PersonalizationStrategy",
     "PromptNotFoundError",
     "ResearchAgentInput",
     "ResearchDossier",

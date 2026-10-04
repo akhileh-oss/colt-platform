@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -10,6 +10,9 @@ from colt_domain import Evidence, VerificationStatus
 
 
 class FakeEvidenceRepository:
+    """Only `add` is exercised; `get`/`list_by_entity` exist purely so this structurally
+    satisfies the `EvidenceRepository` port (Milestone 15 added both)."""
+
     def __init__(self) -> None:
         self.added: list[Evidence] = []
 
@@ -22,6 +25,12 @@ class FakeEvidenceRepository:
         )
         self.added.append(evidence)
         return evidence
+
+    async def get(self, evidence_id: UUID) -> Evidence | None:
+        raise NotImplementedError
+
+    async def list_by_entity(self, entity_type: str, entity_id: UUID) -> list[Evidence]:
+        raise NotImplementedError
 
 
 @pytest.mark.asyncio

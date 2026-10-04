@@ -1,5 +1,12 @@
 """Provider adapters implementing the domain-facing ports (CLAUDE.md §28)."""
 
+from colt_integrations.enrichment import (
+    ApolloEnrichmentProvider,
+    CompanyCandidate,
+    EnrichmentProvider,
+    FakeEnrichmentProvider,
+    PersonCandidate,
+)
 from colt_integrations.errors import (
     ProviderAuthenticationError,
     ProviderBlockedError,
@@ -23,11 +30,16 @@ from colt_integrations.search import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "ApolloEnrichmentProvider",
     "BraveSearchProvider",
+    "CompanyCandidate",
+    "EnrichmentProvider",
+    "FakeEnrichmentProvider",
     "FakeSearchProvider",
     "FetchProvider",
     "FetchedDocument",
     "HttpFetchProvider",
+    "PersonCandidate",
     "ProviderAuthenticationError",
     "ProviderBlockedError",
     "ProviderDependencyFailureError",

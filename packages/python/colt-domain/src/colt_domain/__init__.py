@@ -10,7 +10,7 @@ from colt_domain.lead import Lead, LeadStatus
 from colt_domain.message import Message
 from colt_domain.opportunity import Opportunity, PipelineStage
 from colt_domain.organization import Organization, OrganizationStatus
-from colt_domain.person import Person
+from colt_domain.person import EmailStatus, Person
 from colt_domain.roles import (
     DEFAULT_ROLE_PERMISSIONS,
     Permission,
@@ -33,6 +33,7 @@ __all__ = [
     "Company",
     "Conversation",
     "ConversationState",
+    "EmailStatus",
     "Evidence",
     "Lead",
     "LeadStatus",

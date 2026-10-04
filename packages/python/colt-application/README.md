@@ -16,5 +16,15 @@ is the one use case that writes an `Evidence` row (§10.6, §20); it computes
 is attacker-adjacent model-decided input. `colt-agents`' `record_evidence` tool is the only
 caller.
 
+`colt_application.identity` (CLAUDE.md §22) holds deterministic normalization (`normalize_domain`/
+`normalize_email`/`normalize_linkedin_url`/`normalize_name`) and
+`DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD`. `DiscoverCompany`/`DiscoverPerson` apply §22's exact
+layered matching (provider ID, then email/LinkedIn URL, then confidence-gated name) before ever
+creating a row — never on fuzzy name similarity. `EnrichCompany`/`EnrichPerson` apply §12.4's
+confidence rule: an incoming candidate only overwrites a record's fields when its own
+confidence is at least as high as what is already stored. All four take plain scalar
+arguments, never a `colt_integrations.enrichment` candidate object directly — this package
+depends only on `colt_domain`/`colt_policy`, never on the provider-adapter layer.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

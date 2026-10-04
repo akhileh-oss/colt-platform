@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from colt_db.mappers import company_to_domain
@@ -54,3 +54,39 @@ class SqlAlchemyCompanyRepository(TenantScopedRepository):
         stmt = self._select_scoped(CompanyModel).where(CompanyModel.id == company_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return company_to_domain(model) if model is not None else None
+
+    async def find_by_normalized_domain(self, normalized_domain: str) -> Company | None:
+        stmt = self._select_scoped(CompanyModel).where(
+            CompanyModel.normalized_domain == normalized_domain
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return company_to_domain(model) if model is not None else None
+
+    async def find_by_linkedin_url(self, linkedin_url: str) -> Company | None:
+        stmt = self._select_scoped(CompanyModel).where(CompanyModel.linkedin_url == linkedin_url)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return company_to_domain(model) if model is not None else None
+
+    async def find_by_provider_id(self, provider: str, provider_id: str) -> Company | None:
+        """Identity resolution's top-priority layer (`CLAUDE.md` §22: "exact provider ID where
+        trustworthy") — matches on the `provider`/`provider_id` keys `source_metadata` stores
+        for a record discovered through an `EnrichmentProvider`."""
+        stmt = self._select_scoped(CompanyModel).where(
+            CompanyModel.source_metadata["provider"].astext == provider,
+            CompanyModel.source_metadata["provider_id"].astext == provider_id,
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return company_to_domain(model) if model is not None else None
+
+    async def update(self, company_id: UUID, **fields: Any) -> Company:
+        """Set only the given fields; a field omitted (or passed `None`) is left unchanged —
+        `EnrichCompany` (Milestone 11) only ever passes fields a provider actually returned, so
+        this never needs to clear a field back to `None`."""
+        stmt = self._select_scoped(CompanyModel).where(CompanyModel.id == company_id)
+        model = cast(CompanyModel, (await self._session.execute(stmt)).scalar_one())
+        for key, value in fields.items():
+            if value is not None:
+                setattr(model, key, value)
+        await self._session.flush()
+        await self._session.refresh(model)
+        return company_to_domain(model)

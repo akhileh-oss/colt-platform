@@ -5,16 +5,25 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from colt_db.base import Base, IdentityMixin, TimestampMixin
+from colt_domain import EmailStatus
+
+_VALID_EMAIL_STATUSES = tuple(s.value for s in EmailStatus)
 
 
 class PersonModel(IdentityMixin, TimestampMixin, Base):
     __tablename__ = "people"
+    __table_args__ = (
+        CheckConstraint(
+            f"email_status IS NULL OR email_status IN {_VALID_EMAIL_STATUSES}",
+            name="valid_email_status",
+        ),
+    )
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),

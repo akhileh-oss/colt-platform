@@ -27,7 +27,11 @@ output = await runtime.run(
 `RESEARCH_AGENT_DEFINITION` (CLAUDE.md §12.5) is the first of the ten product agents actually
 built: it returns a `ResearchDossier` whose `DossierClaim`s are labeled `FACT`/`INFERENCE`/
 `HYPOTHESIS`, and a validator makes a `FACT` claim with no linked `evidence_id` impossible to
-construct. `EXAMPLE_AGENT_DEFINITION`/`build_get_lead_tool` remain as Milestone 09's scaffolding.
+construct. `DISCOVERY_AGENT_DEFINITION`/`ENRICHMENT_AGENT_DEFINITION` (§12.3-§12.4) are next:
+`search_companies`/`search_people` deduplicate every candidate against already-known records
+(§22) before creating anything; `enrich_company`/`enrich_person` never let a lower-confidence
+provider result overwrite higher-confidence data already on file. `EXAMPLE_AGENT_DEFINITION`/
+`build_get_lead_tool` remain as Milestone 09's scaffolding.
 
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)
 for the full mechanism (permission filtering, persistence, redaction, the evidence pipeline),

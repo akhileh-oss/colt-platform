@@ -13,10 +13,21 @@ from colt_agents.tools.enrich_person import (
 )
 from colt_agents.tools.fetch_page import FetchPageInput, FetchPageOutput, build_fetch_page_tool
 from colt_agents.tools.get_lead import GetLeadInput, GetLeadOutput, build_get_lead_tool
+from colt_agents.tools.poll_signal_sources import (
+    PollSignalSourcesInput,
+    PollSignalSourcesOutput,
+    PollSignalSourcesResultItem,
+    build_poll_signal_sources_tool,
+)
 from colt_agents.tools.record_evidence import (
     RecordEvidenceInput,
     RecordEvidenceOutput,
     build_record_evidence_tool,
+)
+from colt_agents.tools.record_signal import (
+    RecordSignalInput,
+    RecordSignalOutput,
+    build_record_signal_tool,
 )
 from colt_agents.tools.search_companies import (
     SearchCompaniesInput,
@@ -46,8 +57,13 @@ __all__ = [
     "FetchPageOutput",
     "GetLeadInput",
     "GetLeadOutput",
+    "PollSignalSourcesInput",
+    "PollSignalSourcesOutput",
+    "PollSignalSourcesResultItem",
     "RecordEvidenceInput",
     "RecordEvidenceOutput",
+    "RecordSignalInput",
+    "RecordSignalOutput",
     "SearchCompaniesInput",
     "SearchCompaniesOutput",
     "SearchCompaniesResultItem",
@@ -61,7 +77,9 @@ __all__ = [
     "build_enrich_person_tool",
     "build_fetch_page_tool",
     "build_get_lead_tool",
+    "build_poll_signal_sources_tool",
     "build_record_evidence_tool",
+    "build_record_signal_tool",
     "build_search_companies_tool",
     "build_search_people_tool",
     "build_search_web_tool",

@@ -4,6 +4,12 @@ be changing (funding, leadership change, hiring, expansion, ...).
 `signal_type` is stored as free text, not a closed enum: §10.5 introduces its list of types with
 "Examples", unlike the closed state machines in §11 ("Do not let LLMs invent arbitrary statuses"),
 so new signal types are expected to be added over time without a migration.
+
+`business_implication` (Milestone 11 did not add it; Milestone 12's `SignalAgent` is the first
+thing that populates it) is §12.6's required output field explaining what a signal means for
+sales strategy — judgment, not a deterministic computation (§2.1), so unlike
+`verification_status`/`email_status` it is never server-computed and is simply stored as the
+model gives it.
 """
 
 from __future__ import annotations
@@ -31,6 +37,7 @@ class Signal(BaseModel):
     event_at: datetime | None = None
     confidence: float | None = None
     summary: str | None = None
+    business_implication: str | None = None
     raw_payload: dict[str, Any] = {}
     created_at: datetime
 

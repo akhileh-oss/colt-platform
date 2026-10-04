@@ -133,6 +133,7 @@ def signal_to_domain(model: SignalModel) -> Signal:
         event_at=model.event_at,
         confidence=model.confidence,
         summary=model.summary,
+        business_implication=model.business_implication,
         raw_payload=model.raw_payload,
         created_at=model.created_at,
     )

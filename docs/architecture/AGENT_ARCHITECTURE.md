@@ -2,24 +2,24 @@
 
 > Skeleton established in Milestone 00. The AI gateway (Milestone 08) and agent runtime
 > (Milestone 09) are built; Milestone 10 landed the first real product agent, `ResearchAgent`
-> (§8), and Milestone 11 adds `DiscoveryAgent`/`EnrichmentAgent` (§9). The remaining seven
-> (§12.2, §12.6-§12.11) land in Milestones 12-21, each as an `AgentDefinition` plus prompt plus
-> tools registered against the runtime this document already describes. Specification:
-> `CLAUDE.md` §12-§16, §68.
+> (§8), Milestone 11 added `DiscoveryAgent`/`EnrichmentAgent` (§9), and Milestone 12 adds
+> `SignalAgent` (§10). The remaining six (§12.2, §12.7-§12.11) land in Milestones 13-21, each
+> as an `AgentDefinition` plus prompt plus tools registered against the runtime this document
+> already describes. Specification: `CLAUDE.md` §12-§16, §68.
 
 ## 1. Agents
 
-`colt_agents.RESEARCH_AGENT_DEFINITION` (§8), `DISCOVERY_AGENT_DEFINITION`, and
-`ENRICHMENT_AGENT_DEFINITION` (§9) are the three of the ten product agents (`CLAUDE.md` §12)
-actually built so far. `StrategyAgent`, `SignalAgent`, `ScoringAgent`, `PersonalizationAgent`,
-`MessagingAgent`, `ReplyIntelligenceAgent`, `OpportunityAgent` remain for Milestones 12-21, each
-registering against the same mechanism Milestone 09 built: `colt_agents.AgentDefinition`
-(CLAUDE.md §12.1's contract — name, version, purpose, input/output schemas, allowed/forbidden
-tools, model policy, tool-call ceiling, timeout, evaluation suite — a plain frozen dataclass,
-not Pydantic, since it is written once in code and never crosses an external boundary).
-`colt_agents.EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product agent) — the same
-role `ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07) played for their
-own milestones.
+`colt_agents.RESEARCH_AGENT_DEFINITION` (§8), `DISCOVERY_AGENT_DEFINITION`/
+`ENRICHMENT_AGENT_DEFINITION` (§9), and `SIGNAL_AGENT_DEFINITION` (§10) are the four of the ten
+product agents (`CLAUDE.md` §12) actually built so far. `StrategyAgent`, `ScoringAgent`,
+`PersonalizationAgent`, `MessagingAgent`, `ReplyIntelligenceAgent`, `OpportunityAgent` remain for
+Milestones 13-21, each registering against the same mechanism Milestone 09 built:
+`colt_agents.AgentDefinition` (CLAUDE.md §12.1's contract — name, version, purpose, input/output
+schemas, allowed/forbidden tools, model policy, tool-call ceiling, timeout, evaluation suite —
+a plain frozen dataclass, not Pydantic, since it is written once in code and never crosses an
+external boundary). `colt_agents.EXAMPLE_AGENT_DEFINITION` remains as scaffolding (not a product
+agent) — the same role `ExampleWorkflow` (Milestone 06) and `TraceCheckWorkflow` (Milestone 07)
+played for their own milestones.
 
 ## 2. Runtime
 
@@ -198,3 +198,35 @@ pattern Milestone 10 established for `Evidence.verification_status`. `EnrichPers
 sets `VALID` (a provider's own "verified" claim) or `UNKNOWN` (anything else) — never `INVALID`
 from an unconfirmed status alone, since "not confirmed" and "confirmed bad" are different
 claims.
+
+## 10. SignalAgent and ranking (Milestone 12)
+
+`colt_agents.signal_agent.SIGNAL_AGENT_DEFINITION` (`CLAUDE.md` §12.6) detects "why now" events:
+given a company, it polls pending raw trigger events (`poll_signal_sources`) and records the
+single strongest one it finds (`record_signal`) with `signal_type`, `confidence`, `summary`, and
+`business_implication` — the last of these is the model's own judgment about what the signal
+means for sales strategy (§2.1: not a deterministic computation, unlike
+`verification_status`/`email_status`), so it is stored exactly as given, with no server-side
+computation or validation beyond non-business fields.
+
+**Source ingestion** is `colt_integrations.signals.SignalTriggerSource` (a `Protocol`,
+`poll() -> list[SignalTriggerPayload]`). CLAUDE.md names no specific real signal-source provider
+(unlike `SearchProvider`/`EnrichmentProvider`, both named in §28.2), and Milestone 12's
+acceptance criterion explicitly accepts "a real/mock trigger" — so only the port and
+`FakeSignalTriggerSource` (the literal mock trigger) are built this milestone; a real adapter
+(a specific news feed, webhook, or CRM-event source) is a natural follow-up once one is chosen,
+not a gap.
+
+**Ranking** is `colt_application.signals.rank_signal()` — a pure function of the signal's own
+stored fields (never a persisted column; §10.5 names no `rank` field, and nothing here needs
+re-deriving later the way a stored score would, unlike Milestone 13's lead-scoring history):
+`type_weight(signal_type) × (confidence or a default) × freshness_factor`. `SIGNAL_TYPE_WEIGHTS`
+assigns relative commercial urgency per `CLAUDE.md` §10.5's example signal types (funding and
+acquisition rank highest; website_change lowest), falling back to a default weight for an
+unrecognised type rather than raising — new signal types are expected to be added over time
+without a migration, per `colt_domain.signal`'s own design. Freshness decays (not zeroes) a
+signal whose `event_at`/`observed_at` is older than a 90-day threshold — shorter than
+`colt_application.research`'s 180-day freshness window for general evidence, since a "why now"
+trigger loses relevance faster than a general business fact. `record_signal`'s tool handler
+computes `rank` immediately after persisting and returns it in the same response, so neither
+the model nor a caller ever has to re-derive it from raw fields themselves.

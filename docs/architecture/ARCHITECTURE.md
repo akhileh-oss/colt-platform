@@ -100,6 +100,19 @@ workers scale independently from FastAPI"), so there is no Temporal client in th
 a readiness check for — one is added once a route needs to start or signal a workflow
 (Milestone 18).
 
+`routers/v1/campaigns.py` (Milestone 14) is the first router to actually read and write through
+this whole path end to end — every prior endpoint either had no persistent state (`/me`,
+observability's trace-check) or was reached through an agent's tool-use loop instead of HTTP.
+Each route depends on `DbSessionDep` and one of three `require_permission(Permission.X)`-backed
+principal aliases, constructs a `SqlAlchemyCampaignRepository` scoped to the caller's own
+organization, and drives a `colt_application` use case — the router itself holds no business
+logic, same as every other module in this package. `Campaign`'s state machine (`DRAFT →
+ACTIVE → PAUSED/COMPLETED/ARCHIVED`) is this milestone's own design decision: `CLAUDE.md` §11
+defines one for Lead, Conversation and Opportunity but is silent on Campaign. The same router
+nests `SequenceStep` (§10.10) under `/campaigns/{id}/sequence-steps` — a table and resource
+this milestone's own Build list names separately from Campaign's `channels` list, caught
+missing on review and closed in the same PR.
+
 ### Database engine and connection pooling
 
 `colt_db.session.get_default_engine()` uses `NullPool` — no connection reuse across checkouts —

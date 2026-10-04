@@ -1,8 +1,8 @@
 """The `messages` table (CLAUDE.md §10.11).
 
-`sequence_step_id` has no foreign key: `sequence_steps` is a Milestone 14 (Campaign Engine)
-table, out of scope for Milestone 05's domain foundation. The column exists now so Milestone 14
-adds only a constraint, not a migration that reshapes rows already in production.
+`sequence_step_id`'s foreign key to `sequence_steps` (Milestone 14's own table) is `SET NULL`
+rather than `CASCADE`: a message that was already sent must not disappear just because its
+originating sequence step was later removed.
 """
 
 from __future__ import annotations
@@ -61,7 +61,9 @@ class MessageModel(IdentityMixin, TimestampMixin, Base):
     conversation_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), index=True
     )
-    sequence_step_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    sequence_step_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("sequence_steps.id", ondelete="SET NULL")
+    )
     channel: Mapped[str] = mapped_column(String(50), nullable=False)
     subject: Mapped[str | None] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text, nullable=False)

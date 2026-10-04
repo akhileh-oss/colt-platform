@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 13 — Lead Scoring + Qualification: complete** (one acceptance step unverified — see below).
+**Milestone 14 — Campaign Engine: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -37,10 +37,13 @@ whose trace ID appears in both the API's own log line and a DB-touching Temporal
 a genuinely separate worker process.
 
 The web app is a Next.js operator console with a persistent shell, navigation to every feature
-area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). Every feature
-page except the dashboard's system health panel is an honest placeholder — the schema, repositories
-and worker exist, but no route yet reads or writes through them, and the web app has no login
-flow yet, so there is little else real to show.
+area, and a typed client generated from that OpenAPI contract (`@colt/api-client`). The
+dashboard's system health panel and the Campaigns page are real; every other feature page is an
+honest placeholder — the schema, repositories and worker exist, but no route yet reads or writes
+through them, and the web app has no login flow yet, so the Campaigns page itself cannot be
+exercised in a live browser session here (every request 401s with no real bearer token to
+attach) — it is verified by type-checking against the real generated schema and by the API's own
+route tests instead.
 
 `colt_ai.AnthropicGateway` is the one place allowed to call the Anthropic SDK directly: it routes
 a `ModelClass` to a configured model ID, validates structured output against a Pydantic schema
@@ -89,13 +92,30 @@ arithmetic — plus deterministic `reason_codes` and a qualification decision re
 QUALIFIED`/`NOT_QUALIFIED`. `LeadScore` (§10.8) is append-only — no `update()`, only `add()` —
 so a lead's full scoring history, each row attributable to the `model_version` that produced
 it, is never overwritten.
-**One caveat, carried from Milestones 08-12:** no real Anthropic API key exists in this
+**One caveat, carried from Milestones 08-13:** no real Anthropic API key exists in this
 environment, so every milestone built on `colt_ai.AnthropicGateway` proves its literal
 acceptance criterion against a fake response at the `AsyncAnthropic` client boundary, not a real
 network call (no real Apollo API key exists either). Every other line of the gateway's,
-runtime's, and this milestone's own logic (routing, usage accounting, error classification,
+runtime's, and those milestones' own logic (routing, usage accounting, error classification,
 telemetry, redaction, persistence, identity resolution, confidence precedence, ranking, scoring)
 runs for real in those tests; only the actual provider round-trips are substituted.
+
+`CampaignStatus` (`CLAUDE.md` §10.9, Milestone 14) is the first closed state machine CLAUDE.md
+itself does not define for Campaign — unlike Lead, Conversation and Opportunity, §11 is silent
+on it, so this milestone's own Build list item ("campaign state machine") and acceptance
+criterion ("can be created, validated, paused, resumed, and inspected") are the specification:
+`DRAFT → ACTIVE` only via `ValidateCampaign` (which checks a target-audience definition,
+channels, schedule and limits are all present), `ACTIVE ⇄ PAUSED` via `PauseCampaign`/
+`ResumeCampaign`, and `ACTIVE`/`PAUSED`/`COMPLETED → ARCHIVED` as the terminal state. This is
+also the first real DB-backed CRUD REST resource in the API (`POST`/`GET /campaigns`,
+`GET /campaigns/{id}`, and the three lifecycle actions), gated by `CAMPAIGN_WRITE` (create) and
+`CAMPAIGN_LAUNCH` (validate/pause/resume) rather than one blanket permission, and the first real
+frontend feature page beyond the dashboard's system health panel. No Anthropic call exists
+anywhere in this milestone — there is nothing to leave unverified; its acceptance criterion is
+proven in full against real Postgres. `SequenceStep` (`CLAUDE.md` §10.10) is a real table and
+nested resource too (`/campaigns/{id}/sequence-steps`) — Milestone 14's own Build list names
+"sequence steps" as its own deliverable, separate from Campaign's `channels` list, so this
+milestone's review caught and closed that gap in the same PR rather than deferring it.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
@@ -113,7 +133,8 @@ runs for real in those tests; only the actual provider round-trips are substitut
 | 11        | Discovery + enrichment                | ✅ Complete (see caveat above) |
 | 12        | Signal engine                         | ✅ Complete (see caveat above) |
 | 13        | Lead scoring + qualification          | ✅ Complete (see caveat above) |
-| 14–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 14        | Campaign engine                       | ✅ Complete                    |
+| 15–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

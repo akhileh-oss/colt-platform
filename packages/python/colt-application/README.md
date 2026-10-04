@@ -41,5 +41,29 @@ deterministic, the latter reusing `LeadStatus.QUALIFIED`/`NOT_QUALIFIED` rather 
 scoring-specific vocabulary. `ScoreLead` persists one new, immutable `LeadScore` row (§10.8:
 "Do not overwrite scoring history") and transitions the `Lead`'s own status accordingly.
 
+`colt_application.campaign_state` (CLAUDE.md §10.9, Milestone 14) is a closed state machine
+CLAUDE.md itself never defines for Campaign — §11 covers Lead/Conversation/Opportunity but is
+silent on Campaign, so this milestone's own Build list item ("campaign state machine") and
+acceptance criterion are the specification. `can_transition()` is the deterministic transition
+table (`DRAFT → ACTIVE`, `ACTIVE ⇄ PAUSED`, `ACTIVE`/`PAUSED`/`COMPLETED → ARCHIVED`);
+`validate_campaign_definition()` checks a target-audience definition, at least one channel, a
+schedule and limits are all present, returning every failing rule rather than just the first.
+`CreateCampaign`/`GetCampaign`/`ListCampaigns`/`ValidateCampaign`/`PauseCampaign`/
+`ResumeCampaign` are the six use cases realizing "created, validated, paused, resumed, and
+inspected." A campaign always starts `DRAFT` (the `CampaignRepository.add()` port does not even
+accept a caller-supplied status); `ValidateCampaign` and `ResumeCampaign` both reach `ACTIVE` but
+require the campaign be specifically `DRAFT` or `PAUSED` respectively — not merely that
+`can_transition()` allows the move — since `DRAFT` and `PAUSED` both reach `ACTIVE` in the
+transition table, and letting either use case accept both would let `ResumeCampaign` resurrect
+an unvalidated draft, or `ValidateCampaign` re-run checks against an already-launched campaign.
+
+`AddSequenceStep`/`ListSequenceSteps` (CLAUDE.md §10.10, Milestone 14) close a gap this
+milestone's own build caught on review: CLAUDE.md defines a full `SequenceStep` entity and
+Milestone 14's Build list names "sequence steps" as its own deliverable, separate from
+Campaign's `channels` list — initially missed, fixed in the same PR rather than deferred. Both
+use cases check the parent campaign exists in this organization first, so an unknown
+`campaign_id` surfaces as the same `NotFoundError` every other use case raises for a missing
+parent, not a raw database `IntegrityError` or a silently-empty list.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

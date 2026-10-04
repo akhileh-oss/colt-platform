@@ -2,7 +2,7 @@
 
 from colt_domain.agent_run import AgentRun, AgentRunStatus
 from colt_domain.audit_log import AuditLog
-from colt_domain.campaign import Campaign
+from colt_domain.campaign import Campaign, CampaignStatus
 from colt_domain.company import Company
 from colt_domain.conversation import Conversation, ConversationState
 from colt_domain.evidence import Evidence, VerificationStatus
@@ -19,6 +19,7 @@ from colt_domain.roles import (
     permissions_for,
     role_has_permission,
 )
+from colt_domain.sequence_step import SequenceStep
 from colt_domain.signal import Signal
 from colt_domain.tool_call import ToolCall, ToolCallStatus
 from colt_domain.user import User, UserStatus
@@ -31,6 +32,7 @@ __all__ = [
     "AgentRunStatus",
     "AuditLog",
     "Campaign",
+    "CampaignStatus",
     "Company",
     "Conversation",
     "ConversationState",
@@ -47,6 +49,7 @@ __all__ = [
     "Person",
     "PipelineStage",
     "Role",
+    "SequenceStep",
     "Signal",
     "ToolCall",
     "ToolCallStatus",

@@ -5,16 +5,25 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from colt_db.base import Base, IdentityMixin, TimestampMixin
+from colt_domain import CampaignStatus
+
+_VALID_CAMPAIGN_STATUSES = tuple(s.value for s in CampaignStatus)
 
 
 class CampaignModel(IdentityMixin, TimestampMixin, Base):
     __tablename__ = "campaigns"
+    __table_args__ = (
+        CheckConstraint(
+            f"status IN {_VALID_CAMPAIGN_STATUSES}",
+            name="valid_campaign_status",
+        ),
+    )
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),

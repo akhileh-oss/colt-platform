@@ -1,17 +1,31 @@
 """The Campaign entity (CLAUDE.md §10.9) — targeting, sequence, channels, limits and approval
 policy for an outbound motion.
 
-`status` is a plain string with an application-level default, not a closed enum: unlike Lead,
-Conversation and Opportunity, CLAUDE.md §11 does not define a campaign state machine.
+`CampaignStatus` is a closed state machine added in Milestone 14 — CLAUDE.md §11 never defines
+one for campaigns (unlike Lead, Conversation and Opportunity), so this milestone's own Build
+list item ("campaign state machine") and acceptance criterion ("can be created, validated,
+paused, resumed, and inspected") are the specification: a documented design decision, not a
+guess left unstated. `colt_application.campaign_state` holds the actual transition rules and
+validation logic (§2.1: deterministic business logic belongs in the application layer, not the
+entity itself).
 """
 
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+
+class CampaignStatus(StrEnum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
 
 
 class Campaign(BaseModel):
@@ -22,7 +36,7 @@ class Campaign(BaseModel):
     id: UUID
     organization_id: UUID
     name: str
-    status: str = "DRAFT"
+    status: CampaignStatus = CampaignStatus.DRAFT
     objective: str | None = None
     icp_definition: dict[str, Any] = {}
     rules: dict[str, Any] = {}

@@ -28,3 +28,24 @@ class NotFoundError(ApplicationError):
     tenant-scoped repository ports this package depends on return the same `None` for both
     (CLAUDE.md §2.8), so a use case cannot distinguish them, and should not try to.
     """
+
+
+class CampaignValidationError(ApplicationError):
+    """Raised when a campaign's definition fails `campaign_state.validate_campaign_definition`.
+
+    Carries every failing rule, not just the first, so a caller can report all of them at once
+    rather than making the user fix one field at a time.
+    """
+
+    def __init__(self, issues: list[str]) -> None:
+        super().__init__("Campaign definition is invalid: " + "; ".join(issues))
+        self.issues = issues
+
+
+class InvalidCampaignTransitionError(ApplicationError):
+    """Raised when a use case asks for a `CampaignStatus` transition `campaign_state` forbids."""
+
+    def __init__(self, current: str, target: str) -> None:
+        super().__init__(f"Cannot transition a campaign from {current} to {target}.")
+        self.current = current
+        self.target = target

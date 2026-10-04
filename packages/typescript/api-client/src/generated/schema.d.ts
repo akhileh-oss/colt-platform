@@ -4,6 +4,133 @@
  */
 
 export interface paths {
+    "/api/v1/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List this organization's campaigns */
+        get: operations["list_campaigns_api_v1_campaigns_get"];
+        put?: never;
+        /** Create a campaign */
+        post: operations["create_campaign_api_v1_campaigns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a single campaign */
+        get: operations["get_campaign_api_v1_campaigns__campaign_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause an active campaign */
+        post: operations["pause_campaign_api_v1_campaigns__campaign_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused campaign */
+        post: operations["resume_campaign_api_v1_campaigns__campaign_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/sequence-steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a campaign's sequence steps, in order */
+        get: operations["list_sequence_steps_api_v1_campaigns__campaign_id__sequence_steps_get"];
+        put?: never;
+        /** Add a sequence step to a campaign */
+        post: operations["add_sequence_step_api_v1_campaigns__campaign_id__sequence_steps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a draft campaign's definition and activate it */
+        post: operations["validate_campaign_api_v1_campaigns__campaign_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The authenticated principal
+         * @description Return who the caller is and which organization they act within.
+         *
+         *     Never returns `external_auth_id`: it is an internal identity-provider reference, not
+         *     something a client needs.
+         */
+        get: operations["get_me_api_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta": {
         parameters: {
             query?: never;
@@ -18,6 +145,30 @@ export interface paths {
         get: operations["get_meta_api_v1_meta_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/observability/trace-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trace Check
+         * @description Start `TraceCheckWorkflow` and await its result.
+         *
+         *     Requires authentication like every other route beyond the health probes — this still
+         *     touches the database and starts real workflow executions, so it is not exempt from §27 just
+         *     because its purpose is diagnostic.
+         */
+        post: operations["trace_check_api_v1_observability_trace_check_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -74,6 +225,118 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddSequenceStepRequest */
+        AddSequenceStepRequest: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Channel */
+            channel: string;
+            /** Conditions */
+            conditions?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Delay After Previous
+             * @default 0
+             */
+            delay_after_previous: number;
+            /** Message Strategy */
+            message_strategy: string;
+            /** Step Order */
+            step_order: number;
+        };
+        /** CampaignListResponse */
+        CampaignListResponse: {
+            /** Campaigns */
+            campaigns: components["schemas"]["CampaignResponse"][];
+        };
+        /** CampaignResponse */
+        CampaignResponse: {
+            /** Approval Policy */
+            approval_policy: {
+                [key: string]: unknown;
+            };
+            /** Channels */
+            channels: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Icp Definition */
+            icp_definition: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Limits */
+            limits: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: string;
+            /** Objective */
+            objective: string | null;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Rules */
+            rules: {
+                [key: string]: unknown;
+            };
+            /** Schedule */
+            schedule: {
+                [key: string]: unknown;
+            };
+            status: components["schemas"]["CampaignStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * CampaignStatus
+         * @enum {string}
+         */
+        CampaignStatus: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED";
+        /** CreateCampaignRequest */
+        CreateCampaignRequest: {
+            /** Approval Policy */
+            approval_policy?: {
+                [key: string]: unknown;
+            } | null;
+            /** Channels */
+            channels?: string[] | null;
+            /** Icp Definition */
+            icp_definition?: {
+                [key: string]: unknown;
+            } | null;
+            /** Limits */
+            limits?: {
+                [key: string]: unknown;
+            } | null;
+            /** Name */
+            name: string;
+            /** Objective */
+            objective?: string | null;
+            /** Rules */
+            rules?: {
+                [key: string]: unknown;
+            } | null;
+            /** Schedule */
+            schedule?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /**
          * ErrorCode
          * @description The error classification required by CLAUDE.md §36.
@@ -117,6 +380,11 @@ export interface components {
              */
             status: string;
         };
+        /** MeResponse */
+        MeResponse: {
+            organization: components["schemas"]["OrganizationSummary"];
+            user: components["schemas"]["UserSummary"];
+        };
         /** MetaResponse */
         MetaResponse: {
             /**
@@ -139,6 +407,24 @@ export interface components {
              * @description Running API version.
              */
             version: string;
+        };
+        /**
+         * OrganizationStatus
+         * @enum {string}
+         */
+        OrganizationStatus: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+        /** OrganizationSummary */
+        OrganizationSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            status: components["schemas"]["OrganizationStatus"];
         };
         /** ReadinessCheckModel */
         ReadinessCheckModel: {
@@ -163,6 +449,97 @@ export interface components {
              */
             status: string;
         };
+        /**
+         * Role
+         * @description The minimum roles CLAUDE.md §26.2 requires.
+         * @enum {string}
+         */
+        Role: "OWNER" | "ADMIN" | "MANAGER" | "SALES" | "MARKETING" | "VIEWER" | "SERVICE_AGENT";
+        /** SequenceStepListResponse */
+        SequenceStepListResponse: {
+            /** Sequence Steps */
+            sequence_steps: components["schemas"]["SequenceStepResponse"][];
+        };
+        /** SequenceStepResponse */
+        SequenceStepResponse: {
+            /** Active */
+            active: boolean;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Channel */
+            channel: string;
+            /** Conditions */
+            conditions: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Delay After Previous */
+            delay_after_previous: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Message Strategy */
+            message_strategy: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Step Order */
+            step_order: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** TraceCheckRequest */
+        TraceCheckRequest: {
+            /**
+             * Name
+             * @default Colt
+             */
+            name: string;
+        };
+        /** TraceCheckResponse */
+        TraceCheckResponse: {
+            /** Greeting */
+            greeting: string;
+            /** Organization Count */
+            organization_count: number;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Workflow Id */
+            workflow_id: string;
+        };
+        /**
+         * UserStatus
+         * @enum {string}
+         */
+        UserStatus: "ACTIVE" | "INVITED" | "SUSPENDED" | "DEACTIVATED";
+        /** UserSummary */
+        UserSummary: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["Role"];
+            status: components["schemas"]["UserStatus"];
+        };
     };
     responses: never;
     parameters: never;
@@ -172,6 +549,368 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_campaigns_api_v1_campaigns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_campaign_api_v1_campaigns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_campaign_api_v1_campaigns__campaign_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pause_campaign_api_v1_campaigns__campaign_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resume_campaign_api_v1_campaigns__campaign_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_sequence_steps_api_v1_campaigns__campaign_id__sequence_steps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceStepListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_sequence_step_api_v1_campaigns__campaign_id__sequence_steps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSequenceStepRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceStepResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    validate_campaign_api_v1_campaigns__campaign_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_me_api_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_meta_api_v1_meta_get: {
         parameters: {
             query?: never;
@@ -188,6 +927,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetaResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    trace_check_api_v1_observability_trace_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraceCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceCheckResponse"];
                 };
             };
             /** @description Validation error */

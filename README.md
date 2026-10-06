@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 15 — Personalization + Messaging: complete.**
+**Milestone 16 — Policy + Approval System: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -138,6 +138,25 @@ permission rather than adding a redundant read-only one, since every role that c
 message already carries it) — approving or rejecting a draft is Milestone 16's job, this
 milestone only proves a message can be generated, persisted, and listed back out.
 
+Milestone 16 builds the policy engine CLAUDE.md §17 describes conceptually
+(`colt_policy.evaluate_outbound_send`) and wires it in front of the one use case allowed to
+cause an external send, `SendMessage` — proving the literal acceptance criterion, "a policy
+violation cannot result in an external message send," by showing the fake sender a test injects
+is never called on any denied path. Twelve of §17.1's fifteen mandatory checks are modeled now
+(suppression, channel/campaign/rate-limit/evidence/duplicate-send/approval/send-window); the
+remaining three — contact-permission rules, provider-credential validity, and compliance checks
+— have no represented infrastructure yet and are explicitly deferred rather than faked, the
+same "document the gap" practice this project has followed since Milestone 10. `Approval`
+(§10.17) and `SuppressionEntry` (§10.18) are new entities with their own tables and Row-Level
+Security; `SuppressionEntry.organization_id` is nullable "for system-wide policy," so its RLS
+policy is this milestone's own documented departure from the usual per-tenant pattern — a NULL
+row is visible to every organization rather than none. `GET /campaigns/{id}/messages/{message_
+id}/approve` and `/reject` (Milestone 16) finally make the message-review UI's buttons real;
+`ENABLE_AUTO_APPROVAL` (§51) is a new typed feature flag, off everywhere by default, gating
+whether a campaign's own `approval_policy: {mode: "auto"}` is even allowed to skip a human
+decision. No Anthropic call exists anywhere in this milestone — there is nothing to mock; its
+acceptance criterion is proven in full against real Postgres.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -156,7 +175,8 @@ milestone only proves a message can be generated, persisted, and listed back out
 | 13        | Lead scoring + qualification          | ✅ Complete (see caveat above) |
 | 14        | Campaign engine                       | ✅ Complete                    |
 | 15        | Personalization + messaging           | ✅ Complete (see caveat above) |
-| 16–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 16        | Policy + approval system              | ✅ Complete                    |
+| 17–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

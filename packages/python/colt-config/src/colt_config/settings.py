@@ -199,6 +199,10 @@ class FeatureSettings(BaseSettings):
     real_social: bool = False
     outbound_enabled: bool = False
     agents_enabled: bool = True
+    #: §51's own example flag. Off everywhere by default — "never turn on an external
+    #: side-effect feature implicitly" — an operator opts a specific organization's campaign
+    #: into auto-approval (`Campaign.approval_policy`) only once this is explicitly enabled.
+    auto_approval_enabled: bool = False
 
     @property
     def any_real_side_effects(self) -> bool:

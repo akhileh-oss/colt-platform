@@ -5,6 +5,7 @@ tests) sees the full schema from one import.
 """
 
 from colt_db.models.agent_run import AgentRunModel
+from colt_db.models.approval import ApprovalModel
 from colt_db.models.audit_log import AuditLogModel
 from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
@@ -18,11 +19,13 @@ from colt_db.models.organization import OrganizationModel
 from colt_db.models.person import PersonModel
 from colt_db.models.sequence_step import SequenceStepModel
 from colt_db.models.signal import SignalModel
+from colt_db.models.suppression_entry import SuppressionEntryModel
 from colt_db.models.tool_call import ToolCallModel
 from colt_db.models.user import UserModel
 
 __all__ = [
     "AgentRunModel",
+    "ApprovalModel",
     "AuditLogModel",
     "CampaignModel",
     "CompanyModel",
@@ -36,6 +39,7 @@ __all__ = [
     "PersonModel",
     "SequenceStepModel",
     "SignalModel",
+    "SuppressionEntryModel",
     "ToolCallModel",
     "UserModel",
 ]

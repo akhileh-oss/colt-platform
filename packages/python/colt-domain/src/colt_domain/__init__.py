@@ -1,6 +1,7 @@
 """Entities, value objects, enumerations, invariants and deterministic business rules."""
 
 from colt_domain.agent_run import AgentRun, AgentRunStatus
+from colt_domain.approval import Approval, ApprovalStatus
 from colt_domain.audit_log import AuditLog
 from colt_domain.campaign import Campaign, CampaignStatus
 from colt_domain.company import Company
@@ -21,6 +22,7 @@ from colt_domain.roles import (
 )
 from colt_domain.sequence_step import SequenceStep
 from colt_domain.signal import Signal
+from colt_domain.suppression_entry import SuppressionEntry, SuppressionReason
 from colt_domain.tool_call import ToolCall, ToolCallStatus
 from colt_domain.user import User, UserStatus
 
@@ -30,6 +32,8 @@ __all__ = [
     "DEFAULT_ROLE_PERMISSIONS",
     "AgentRun",
     "AgentRunStatus",
+    "Approval",
+    "ApprovalStatus",
     "AuditLog",
     "Campaign",
     "CampaignStatus",
@@ -51,6 +55,8 @@ __all__ = [
     "Role",
     "SequenceStep",
     "Signal",
+    "SuppressionEntry",
+    "SuppressionReason",
     "ToolCall",
     "ToolCallStatus",
     "User",

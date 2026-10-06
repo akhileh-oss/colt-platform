@@ -64,3 +64,31 @@ class MessageValidationError(ApplicationError):
     def __init__(self, issues: list[str]) -> None:
         super().__init__("Message personalization is invalid: " + "; ".join(issues))
         self.issues = issues
+
+
+class PolicyDeniedError(ApplicationError):
+    """Raised when `colt_policy.evaluate_outbound_send` returns anything other than `ALLOW`.
+
+    `SendMessage` raises this *instead of* calling `MessageSender.send` — never after. This is
+    the literal mechanism behind Milestone 16's acceptance criterion: "a policy violation cannot
+    result in an external message send."
+    """
+
+    def __init__(self, decision: str, failed_checks: tuple[str, ...]) -> None:
+        super().__init__(
+            f"Outbound send denied by policy ({decision}): " + ", ".join(failed_checks)
+        )
+        self.decision = decision
+        self.failed_checks = failed_checks
+
+
+class InvalidApprovalTransitionError(ApplicationError):
+    """Raised when a use case asks to decide an `Approval` that is not `PENDING`.
+
+    An approval decision, once made, is final — re-deciding an already-decided approval would
+    silently rewrite history that an `AuditLog` row elsewhere already recorded as fact.
+    """
+
+    def __init__(self, current: str) -> None:
+        super().__init__(f"Cannot decide an approval that is already {current}.")
+        self.current = current

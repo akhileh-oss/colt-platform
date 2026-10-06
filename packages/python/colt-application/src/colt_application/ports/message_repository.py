@@ -5,6 +5,13 @@ own design decision (see `colt_application.use_cases.draft_message`): regenerati
 for the same lead/step creates a new, immutable row rather than overwriting one, so a lead's
 drafted messages form their own append-only "versions" history, the same pattern `LeadScore`
 (§10.8) already established for scoring.
+
+Milestone 16 adds three workflow-status mutators (`update_approval_status`,
+`update_send_result`, `count_sent_since`). These do not reopen the append-only rule above: that
+rule protects drafted *content* from being silently overwritten by a newer draft. A message's
+approval/send status is lifecycle metadata on the one row a human or the policy engine is
+actually deciding about — the same distinction `CampaignStatus` being mutable in place
+(Milestone 14) already draws for `Campaign`.
 """
 
 from __future__ import annotations
@@ -45,3 +52,18 @@ class MessageRepository(Protocol):
     async def list_by_lead_and_step(
         self, lead_id: UUID, sequence_step_id: UUID | None
     ) -> list[Message]: ...
+
+    async def update_approval_status(
+        self, message_id: UUID, *, approval_status: str
+    ) -> Message: ...
+
+    async def update_send_result(
+        self,
+        message_id: UUID,
+        *,
+        status: str,
+        sent_at: datetime,
+        provider_message_id: str | None,
+    ) -> Message: ...
+
+    async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int: ...

@@ -35,7 +35,9 @@ from colt_application import (
     AddSequenceStep,
     CampaignValidationError,
     CreateCampaign,
+    DecideMessageApproval,
     GetCampaign,
+    InvalidApprovalTransitionError,
     InvalidCampaignTransitionError,
     ListCampaigns,
     ListMessages,
@@ -47,7 +49,10 @@ from colt_application import (
     ValidateCampaign,
 )
 from colt_db.repositories import (
+    SqlAlchemyApprovalRepository,
+    SqlAlchemyAuditLogRepository,
     SqlAlchemyCampaignRepository,
+    SqlAlchemyLeadRepository,
     SqlAlchemyMessageRepository,
     SqlAlchemySequenceStepRepository,
 )
@@ -168,8 +173,8 @@ class AddSequenceStepRequest(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    """The message review UI's read model (Milestone 15). Approve/reject actions are
-    Milestone 16's (Policy + Approval System) job — this is inspection only."""
+    """The message review UI's read model (Milestone 15); `approve`/`reject` (Milestone 16)
+    return this same shape so a caller sees the decision reflected immediately."""
 
     id: UUID
     campaign_id: UUID
@@ -200,6 +205,10 @@ class MessageResponse(BaseModel):
 
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
+
+
+class DecideMessageApprovalRequest(BaseModel):
+    reason: str | None = None
 
 
 @router.post(
@@ -364,3 +373,79 @@ async def list_messages(
     except NotFoundError as exc:
         raise ApiNotFoundError(str(exc)) from exc
     return MessageListResponse(messages=[MessageResponse.from_domain(row) for row in rows])
+
+
+async def _decide_message_approval(
+    campaign_id: UUID,
+    message_id: UUID,
+    *,
+    approve: bool,
+    request: DecideMessageApprovalRequest,
+    principal: OrganizationContext,
+    session: DbSessionDep,
+) -> MessageResponse:
+    messages = SqlAlchemyMessageRepository(session, principal.organization.id)
+    approvals = await SqlAlchemyApprovalRepository.create(session, principal.organization.id)
+    leads = SqlAlchemyLeadRepository(session, principal.organization.id)
+    audit_logs = await SqlAlchemyAuditLogRepository.create(session, principal.organization.id)
+    existing = await messages.get(message_id)
+    if existing is None or existing.campaign_id != campaign_id:
+        raise ApiNotFoundError(f"No message found with id {message_id} on campaign {campaign_id}.")
+    try:
+        message = await DecideMessageApproval(messages, approvals, leads, audit_logs)(
+            message_id,
+            approve=approve,
+            decided_by=principal.user.id,
+            reason=request.reason,
+            now=datetime.now(UTC),
+        )
+    except NotFoundError as exc:
+        raise ApiNotFoundError(str(exc)) from exc
+    except InvalidApprovalTransitionError as exc:
+        raise ConflictError(str(exc)) from exc
+    await session.commit()
+    return MessageResponse.from_domain(message)
+
+
+@router.post(
+    "/{campaign_id}/messages/{message_id}/approve",
+    response_model=MessageResponse,
+    summary="Approve a drafted message",
+)
+async def approve_message(
+    campaign_id: UUID,
+    message_id: UUID,
+    request: DecideMessageApprovalRequest,
+    principal: MessageReviewPrincipalDep,
+    session: DbSessionDep,
+) -> MessageResponse:
+    return await _decide_message_approval(
+        campaign_id,
+        message_id,
+        approve=True,
+        request=request,
+        principal=principal,
+        session=session,
+    )
+
+
+@router.post(
+    "/{campaign_id}/messages/{message_id}/reject",
+    response_model=MessageResponse,
+    summary="Reject a drafted message",
+)
+async def reject_message(
+    campaign_id: UUID,
+    message_id: UUID,
+    request: DecideMessageApprovalRequest,
+    principal: MessageReviewPrincipalDep,
+    session: DbSessionDep,
+) -> MessageResponse:
+    return await _decide_message_approval(
+        campaign_id,
+        message_id,
+        approve=False,
+        request=request,
+        principal=principal,
+        session=session,
+    )

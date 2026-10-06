@@ -11,10 +11,12 @@ import { PageHeader, PageSkeleton } from "@/components/page-header";
 import {
   type Campaign,
   useAddSequenceStep,
+  useApproveMessage,
   useCampaigns,
   useCreateCampaign,
   useMessages,
   usePauseCampaign,
+  useRejectMessage,
   useResumeCampaign,
   useSequenceSteps,
   useValidateCampaign,
@@ -97,6 +99,8 @@ function SequenceSteps({ campaignId }: { campaignId: string }) {
 
 function DraftedMessages({ campaignId }: { campaignId: string }) {
   const { data: messages, isLoading } = useMessages(campaignId);
+  const approveMessage = useApproveMessage(campaignId);
+  const rejectMessage = useRejectMessage(campaignId);
 
   return (
     <div className="mt-3 border-t border-border pt-3">
@@ -115,6 +119,26 @@ function DraftedMessages({ campaignId }: { campaignId: string }) {
                 ) : null}
               </div>
               <p className="mt-1 text-muted-foreground">{message.body}</p>
+              {message.approval_status === "PENDING" ? (
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    disabled={approveMessage.isPending}
+                    onClick={() => approveMessage.mutate({ messageId: message.id })}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    disabled={rejectMessage.isPending}
+                    onClick={() => rejectMessage.mutate({ messageId: message.id })}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

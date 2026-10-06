@@ -10,6 +10,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from colt_db.models.agent_run import AgentRunModel
+from colt_db.models.approval import ApprovalModel
 from colt_db.models.audit_log import AuditLogModel
 from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
@@ -23,11 +24,14 @@ from colt_db.models.organization import OrganizationModel
 from colt_db.models.person import PersonModel
 from colt_db.models.sequence_step import SequenceStepModel
 from colt_db.models.signal import SignalModel
+from colt_db.models.suppression_entry import SuppressionEntryModel
 from colt_db.models.tool_call import ToolCallModel
 from colt_db.models.user import UserModel
 from colt_domain import (
     AgentRun,
     AgentRunStatus,
+    Approval,
+    ApprovalStatus,
     AuditLog,
     Campaign,
     CampaignStatus,
@@ -48,6 +52,8 @@ from colt_domain import (
     Role,
     SequenceStep,
     Signal,
+    SuppressionEntry,
+    SuppressionReason,
     ToolCall,
     ToolCallStatus,
     User,
@@ -344,4 +350,33 @@ def tool_call_to_domain(model: ToolCallModel) -> ToolCall:
         status=ToolCallStatus(model.status),
         error_code=model.error_code,
         latency_ms=model.latency_ms,
+    )
+
+
+def approval_to_domain(model: ApprovalModel) -> Approval:
+    return Approval(
+        id=model.id,
+        organization_id=model.organization_id,
+        entity_type=model.entity_type,
+        entity_id=model.entity_id,
+        action_type=model.action_type,
+        requested_by=model.requested_by,
+        approved_by=model.approved_by,
+        status=ApprovalStatus(model.status),
+        reason=model.reason,
+        created_at=model.created_at,
+        decided_at=model.decided_at,
+    )
+
+
+def suppression_entry_to_domain(model: SuppressionEntryModel) -> SuppressionEntry:
+    return SuppressionEntry(
+        id=model.id,
+        organization_id=model.organization_id,
+        identifier_type=model.identifier_type,
+        identifier=model.identifier,
+        reason=SuppressionReason(model.reason),
+        source=model.source,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )

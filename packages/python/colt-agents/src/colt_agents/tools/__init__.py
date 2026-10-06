@@ -35,6 +35,11 @@ from colt_agents.tools.record_evidence import (
     RecordEvidenceOutput,
     build_record_evidence_tool,
 )
+from colt_agents.tools.record_reply_classification import (
+    RecordReplyClassificationInput,
+    RecordReplyClassificationOutput,
+    build_record_reply_classification_tool,
+)
 from colt_agents.tools.record_signal import (
     RecordSignalInput,
     RecordSignalOutput,
@@ -84,6 +89,8 @@ __all__ = [
     "PollSignalSourcesResultItem",
     "RecordEvidenceInput",
     "RecordEvidenceOutput",
+    "RecordReplyClassificationInput",
+    "RecordReplyClassificationOutput",
     "RecordSignalInput",
     "RecordSignalOutput",
     "ScoreLeadInput",
@@ -107,6 +114,7 @@ __all__ = [
     "build_list_evidence_for_lead_tool",
     "build_poll_signal_sources_tool",
     "build_record_evidence_tool",
+    "build_record_reply_classification_tool",
     "build_record_signal_tool",
     "build_score_lead_tool",
     "build_search_companies_tool",

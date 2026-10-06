@@ -17,6 +17,7 @@ from colt_application.errors import (
     PolicyDeniedError,
 )
 from colt_application.identity import DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD
+from colt_application.reply_classification import Urgency, determine_conversation_transition
 from colt_application.research import (
     DEFAULT_FRESHNESS_THRESHOLD_DAYS,
     determine_verification_status,
@@ -56,6 +57,7 @@ from colt_application.use_cases.pause_campaign import PauseCampaign
 from colt_application.use_cases.process_bounce import ProcessBounce
 from colt_application.use_cases.process_inbound_email import ProcessInboundEmail
 from colt_application.use_cases.record_evidence import RecordEvidence
+from colt_application.use_cases.record_reply_classification import RecordReplyClassification
 from colt_application.use_cases.record_signal import RecordSignal
 from colt_application.use_cases.resolve_organization_context import (
     OrganizationContext,
@@ -113,6 +115,7 @@ __all__ = [
     "ProcessBounce",
     "ProcessInboundEmail",
     "RecordEvidence",
+    "RecordReplyClassification",
     "RecordSignal",
     "ResolveOrganizationContext",
     "ResumeCampaign",
@@ -120,10 +123,12 @@ __all__ = [
     "SelectPersonalizationEvidence",
     "SendMessage",
     "UnsubscribeByToken",
+    "Urgency",
     "ValidateCampaign",
     "__version__",
     "can_transition",
     "compute_overall_score",
+    "determine_conversation_transition",
     "determine_qualification",
     "determine_reason_codes",
     "determine_verification_status",

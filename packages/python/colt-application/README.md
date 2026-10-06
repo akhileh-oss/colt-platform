@@ -114,5 +114,19 @@ second drafted version of the same lead/step existed. `MessageSender.send` gaine
 Person` parameter (a port Milestone 16 authored, amended here since its PR was still open) — a
 real channel adapter needs the recipient's address, which `SendMessage` already resolves.
 
+`colt_application.reply_classification.determine_conversation_transition` (CLAUDE.md §11.2,
+§12.10, §23.1, Milestone 19) is the "model judges, code decides" split `ScoringAgent`'s own
+`score_lead` already established, applied to conversation state: `ReplyIntelligenceAgent`
+recommends a transition, but a HIGH-urgency reply always produces `HUMAN_HANDOFF` regardless of
+what was recommended, and a terminal conversation (`UNSUBSCRIBED`/`HUMAN_HANDOFF`) never moves
+again from a later reply — two rules no model call can override, which is what makes "high-
+intent replies produce the correct handoff" hold deterministically rather than depend on the
+model remembering to ask for a handoff itself. `RecordReplyClassification` is the one write
+`ReplyIntelligenceAgent`'s tool calls: it applies that transition, records a `reply_classified`
+`ConversationEvent` carrying every §12.10 field plus a suggested response (read by a human,
+never auto-sent — "suggested response generation" is a Build item, not a send path), and, only
+when the transition actually lands on `HUMAN_HANDOFF`, a second, distinct `handoff_created`
+event — §10.13 lists both as their own event types.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

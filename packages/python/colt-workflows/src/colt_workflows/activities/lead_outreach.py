@@ -384,6 +384,7 @@ class CheckConversationInput:
 class CheckConversationOutput:
     replied: bool
     unsubscribed: bool
+    conversation_id: str | None = None
 
 
 @activity.defn
@@ -414,4 +415,8 @@ async def check_conversation_activity(input: CheckConversationInput) -> CheckCon
             and conversation.last_activity_at is not None
             and conversation.last_activity_at > since
         )
-        return CheckConversationOutput(replied=replied, unsubscribed=False)
+        return CheckConversationOutput(
+            replied=replied,
+            unsubscribed=False,
+            conversation_id=str(conversation.id) if replied and conversation else None,
+        )

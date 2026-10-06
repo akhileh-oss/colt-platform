@@ -53,6 +53,8 @@ from colt_application.use_cases.list_evidence_for_lead import ListEvidenceForLea
 from colt_application.use_cases.list_messages import ListMessages
 from colt_application.use_cases.list_sequence_steps import ListSequenceSteps
 from colt_application.use_cases.pause_campaign import PauseCampaign
+from colt_application.use_cases.process_bounce import ProcessBounce
+from colt_application.use_cases.process_inbound_email import ProcessInboundEmail
 from colt_application.use_cases.record_evidence import RecordEvidence
 from colt_application.use_cases.record_signal import RecordSignal
 from colt_application.use_cases.resolve_organization_context import (
@@ -65,6 +67,7 @@ from colt_application.use_cases.select_personalization_evidence import (
     SelectPersonalizationEvidence,
 )
 from colt_application.use_cases.send_message import SendMessage
+from colt_application.use_cases.unsubscribe_by_token import UnsubscribeByToken
 from colt_application.use_cases.validate_campaign import ValidateCampaign
 
 __version__ = "0.1.0"
@@ -107,6 +110,8 @@ __all__ = [
     "OrganizationContextError",
     "PauseCampaign",
     "PolicyDeniedError",
+    "ProcessBounce",
+    "ProcessInboundEmail",
     "RecordEvidence",
     "RecordSignal",
     "ResolveOrganizationContext",
@@ -114,6 +119,7 @@ __all__ = [
     "ScoreLead",
     "SelectPersonalizationEvidence",
     "SendMessage",
+    "UnsubscribeByToken",
     "ValidateCampaign",
     "__version__",
     "can_transition",

@@ -70,6 +70,9 @@ class FakeMessageRepository:
     async def get_by_idempotency_key(self, idempotency_key: str) -> Message | None:
         raise NotImplementedError
 
+    async def get_by_provider_message_id(self, provider_message_id: str) -> Message | None:
+        raise NotImplementedError
+
     async def list_by_campaign(self, campaign_id: UUID) -> list[Message]:
         raise NotImplementedError
 
@@ -88,6 +91,7 @@ class FakeMessageRepository:
         status: str,
         sent_at: datetime,
         provider_message_id: str | None,
+        idempotency_key: str | None = None,
     ) -> Message:
         raise NotImplementedError
 

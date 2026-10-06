@@ -68,6 +68,16 @@ class SqlAlchemyMessageRepository(TenantScopedRepository):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return message_to_domain(model) if model is not None else None
 
+    async def get_by_provider_message_id(self, provider_message_id: str) -> Message | None:
+        """Look up the message an inbound reply's `In-Reply-To` header names (§29.1: "Incoming
+        messages must resolve to the correct Colt conversation") — the other half of
+        `update_send_result()`'s own `provider_message_id` write."""
+        stmt = self._select_scoped(MessageModel).where(
+            MessageModel.provider_message_id == provider_message_id
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return message_to_domain(model) if model is not None else None
+
     async def list_by_campaign(self, campaign_id: UUID) -> list[Message]:
         stmt = (
             self._select_scoped(MessageModel)
@@ -114,16 +124,21 @@ class SqlAlchemyMessageRepository(TenantScopedRepository):
         status: str,
         sent_at: datetime,
         provider_message_id: str | None,
+        idempotency_key: str | None = None,
     ) -> Message:
-        """Record the outcome of an actually-attempted send. No real channel provider exists
-        yet (`CLAUDE.md` §29's email subsystem is Milestone 17's job) — this method exists now
-        so `SendMessage` (Milestone 16) has somewhere real to write the result once policy
-        allows a send, rather than Milestone 17 needing a migration to add it later."""
+        """Record the outcome of an actually-attempted send. `idempotency_key` (Milestone 17,
+        §24.4) is claimed here rather than at draft time: every drafted "version" shares the
+        same `(lead_id, sequence_step_id)` key, and the table's own unique index is on
+        `(organization_id, idempotency_key)` — setting it uniformly at draft time would make
+        drafting a second version an `IntegrityError`. It is claimed by whichever row actually
+        gets sent, once."""
         stmt = self._select_scoped(MessageModel).where(MessageModel.id == message_id)
         model = (await self._session.execute(stmt)).scalar_one()
         model.status = status
         model.sent_at = sent_at
         model.provider_message_id = provider_message_id
+        if idempotency_key is not None:
+            model.idempotency_key = idempotency_key
         await self._session.flush()
         await self._session.refresh(model)
         return message_to_domain(model)

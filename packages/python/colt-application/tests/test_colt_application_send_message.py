@@ -32,17 +32,26 @@ NOW = datetime.now(UTC)
 
 
 class FakeMessageRepository:
-    def __init__(self, message: Message) -> None:
+    def __init__(self, message: Message, *, other_messages: list[Message] | None = None) -> None:
         self.message = message
         self.sent_count = 0
+        self._other_messages = other_messages or []
 
     async def add(self, **kwargs: Any) -> Message:
         raise NotImplementedError
 
     async def get(self, message_id: UUID) -> Message | None:
-        return self.message if message_id == self.message.id else None
+        if message_id == self.message.id:
+            return self.message
+        return next((m for m in self._other_messages if m.id == message_id), None)
 
     async def get_by_idempotency_key(self, idempotency_key: str) -> Message | None:
+        for candidate in [self.message, *self._other_messages]:
+            if candidate.idempotency_key == idempotency_key:
+                return candidate
+        return None
+
+    async def get_by_provider_message_id(self, provider_message_id: str) -> Message | None:
         raise NotImplementedError
 
     async def list_by_campaign(self, campaign_id: UUID) -> list[Message]:
@@ -57,15 +66,18 @@ class FakeMessageRepository:
         raise NotImplementedError
 
     async def update_send_result(
-        self, message_id: UUID, *, status: str, sent_at: datetime, provider_message_id: str | None
+        self,
+        message_id: UUID,
+        *,
+        status: str,
+        sent_at: datetime,
+        provider_message_id: str | None,
+        idempotency_key: str | None = None,
     ) -> Message:
-        self.message = self.message.model_copy(
-            update={
-                "status": status,
-                "sent_at": sent_at,
-                "provider_message_id": provider_message_id,
-            }
-        )
+        update = {"status": status, "sent_at": sent_at, "provider_message_id": provider_message_id}
+        if idempotency_key is not None:
+            update["idempotency_key"] = idempotency_key
+        self.message = self.message.model_copy(update=update)
         return self.message
 
     async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int:
@@ -178,7 +190,7 @@ class FakeMessageSender:
     def __init__(self) -> None:
         self.sent: list[Message] = []
 
-    async def send(self, message: Message) -> str:
+    async def send(self, message: Message, *, recipient: Person) -> str:
         self.sent.append(message)
         return "provider-msg-id-123"
 
@@ -256,8 +268,9 @@ def _harness(
     message: Message,
     suppressed: set[str] | None = None,
     approval: Approval | None = None,
+    other_messages: list[Message] | None = None,
 ) -> tuple[SendMessage, FakeMessageRepository, FakeMessageSender, FakeLeadRepository]:
-    messages = FakeMessageRepository(message)
+    messages = FakeMessageRepository(message, other_messages=other_messages)
     sender = FakeMessageSender()
     leads = FakeLeadRepository(lead)
     send_message = SendMessage(
@@ -466,6 +479,49 @@ async def test_an_already_sent_message_cannot_be_sent_again() -> None:
 
     with pytest.raises(PolicyDeniedError) as excinfo:
         await send_message(message.id, now=NOW, auto_approval_enabled=False)
+
+    assert "no_duplicate_send" in excinfo.value.failed_checks
+    assert sender.sent == []
+
+
+@pytest.mark.asyncio
+async def test_a_different_drafted_version_already_sent_blocks_this_one() -> None:
+    """§24.4/§29.2: the idempotency key is derived from `(campaign_id, lead_id,
+    sequence_step_id)`, not the message row's own id — a second drafted "version" for the same
+    slot must not re-send just because this exact row was never marked SENT."""
+    org_id = uuid4()
+    lead = _lead(org_id)
+    person = _person(lead.person_id)
+    campaign = _campaign(org_id)
+    sequence_step_id = uuid4()
+    already_sent = _message(
+        lead.id,
+        campaign.id,
+        sequence_step_id=sequence_step_id,
+        status="SENT",
+        idempotency_key=f"{campaign.id}:{lead.id}:{sequence_step_id}",
+    )
+    new_draft = _message(lead.id, campaign.id, sequence_step_id=sequence_step_id)
+    approval = Approval(
+        id=uuid4(),
+        organization_id=org_id,
+        entity_type="Message",
+        entity_id=new_draft.id,
+        action_type="MESSAGE_SEND",
+        status=ApprovalStatus.APPROVED,
+        created_at=NOW,
+    )
+    send_message, _messages, sender, _leads = _harness(
+        campaign=campaign,
+        lead=lead,
+        person=person,
+        message=new_draft,
+        approval=approval,
+        other_messages=[already_sent],
+    )
+
+    with pytest.raises(PolicyDeniedError) as excinfo:
+        await send_message(new_draft.id, now=NOW, auto_approval_enabled=False)
 
     assert "no_duplicate_send" in excinfo.value.failed_checks
     assert sender.sent == []

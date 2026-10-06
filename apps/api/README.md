@@ -45,6 +45,16 @@ message's own `campaign_id`. `InvalidApprovalTransitionError` (an already-decide
 maps to the existing `ConflictError` (409), the same taxonomy slot `InvalidCampaignTransitionError`
 uses.
 
+`routers/v1/unsubscribe.py` (`POST /unsubscribe/{organization_id}/{message_id}`, CLAUDE.md
+§18.2, §29, Milestone 17) is the API's first deliberately unauthenticated route: it is the
+target of the `List-Unsubscribe`/`List-Unsubscribe-Post` headers `SmtpEmailProvider` sets (RFC
+8058), which a mail client — not a signed-in user — calls. `organization_id` is routing
+information carried in the link, not a credential: Row-Level Security requires a tenant bound
+before any lookup can run at all, and a bare `message_id` has no organization to bind. It
+responds `204` whether or not the token resolves, the standard unsubscribe-link convention
+(never confirm or deny a specific id to an unauthenticated caller, and never let a mail client's
+one-click retry start erroring once the first attempt already succeeded).
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

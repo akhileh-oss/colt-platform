@@ -40,7 +40,7 @@ from colt_db.repositories.lead_repository import SqlAlchemyLeadRepository
 from colt_db.repositories.message_repository import SqlAlchemyMessageRepository
 from colt_db.repositories.person_repository import SqlAlchemyPersonRepository
 from colt_db.repositories.suppression_repository import SqlAlchemySuppressionRepository
-from colt_domain import LeadStatus, Message, SuppressionReason
+from colt_domain import LeadStatus, Message, Person, SuppressionReason
 
 SessionFactory = Any
 NOW = datetime.now(UTC)
@@ -52,7 +52,7 @@ class FakeMessageSender:
     def __init__(self) -> None:
         self.sent: list[Message] = []
 
-    async def send(self, message: Message) -> str:
+    async def send(self, message: Message, *, recipient: Person) -> str:
         self.sent.append(message)
         return "provider-msg-id-integration-test"
 

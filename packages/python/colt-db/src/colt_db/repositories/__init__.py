@@ -5,6 +5,9 @@ from colt_db.repositories.approval_repository import SqlAlchemyApprovalRepositor
 from colt_db.repositories.audit_log_repository import SqlAlchemyAuditLogRepository
 from colt_db.repositories.campaign_repository import SqlAlchemyCampaignRepository
 from colt_db.repositories.company_repository import SqlAlchemyCompanyRepository
+from colt_db.repositories.conversation_event_repository import (
+    SqlAlchemyConversationEventRepository,
+)
 from colt_db.repositories.conversation_repository import SqlAlchemyConversationRepository
 from colt_db.repositories.evidence_repository import SqlAlchemyEvidenceRepository
 from colt_db.repositories.lead_repository import SqlAlchemyLeadRepository
@@ -25,6 +28,7 @@ __all__ = [
     "SqlAlchemyAuditLogRepository",
     "SqlAlchemyCampaignRepository",
     "SqlAlchemyCompanyRepository",
+    "SqlAlchemyConversationEventRepository",
     "SqlAlchemyConversationRepository",
     "SqlAlchemyEvidenceRepository",
     "SqlAlchemyLeadRepository",

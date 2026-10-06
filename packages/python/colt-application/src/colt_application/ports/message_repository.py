@@ -47,6 +47,8 @@ class MessageRepository(Protocol):
 
     async def get_by_idempotency_key(self, idempotency_key: str) -> Message | None: ...
 
+    async def get_by_provider_message_id(self, provider_message_id: str) -> Message | None: ...
+
     async def list_by_campaign(self, campaign_id: UUID) -> list[Message]: ...
 
     async def list_by_lead_and_step(
@@ -64,6 +66,7 @@ class MessageRepository(Protocol):
         status: str,
         sent_at: datetime,
         provider_message_id: str | None,
+        idempotency_key: str | None = None,
     ) -> Message: ...
 
     async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int: ...

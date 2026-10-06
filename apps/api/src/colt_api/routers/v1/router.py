@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from colt_api.routers.v1 import campaigns, me, meta, observability
+from colt_api.routers.v1 import campaigns, me, meta, observability, unsubscribe
 
 API_V1_PREFIX = "/api/v1"
 
@@ -17,3 +17,4 @@ router.include_router(meta.router)
 router.include_router(me.router)
 router.include_router(observability.router)
 router.include_router(campaigns.router)
+router.include_router(unsubscribe.router)

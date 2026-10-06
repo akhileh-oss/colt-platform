@@ -421,3 +421,52 @@ workflow's worker registration shares that exact mechanism, and `LeadOutreachWor
 cannot reach a durable wait state without first drafting a message, which needs a real
 Anthropic call no key in this environment can make; re-running Milestone 06's subprocess test
 against this specific workflow would only exercise the Temporal SDK a second time.
+
+## 14. Reply intelligence (Milestone 19)
+
+`ReplyIntelligenceAgent` (`colt_agents`, CLAUDE.md §12.10) classifies one inbound reply into
+`intent`, `sentiment`, `urgency`, `objection`, `asks_question`, `meeting_signal`, a
+`recommended_state_transition`, `confidence`, and a `suggested_response` — §12.10's own minimum
+output schema, verbatim. `ReplyIntent`/`Sentiment` are closed enums this milestone itself
+defines (CLAUDE.md gives no vocabulary for either), the same "model names a field without
+enumerating values, so the milestone building it makes the documented call" pattern
+`CampaignStatus` (Milestone 14) and `Urgency` (`colt_application.reply_classification`) already
+establish. `recommended_state_transition` is validated against a subset of `ConversationState` —
+every value except `OPEN` (never a destination) and `UNSUBSCRIBED` (an explicit unsubscribe
+link/request is its own mechanism, never a reply classification's guess).
+
+The one write tool this agent may call, `record_reply_classification`, never applies
+`recommended_state_transition` as the state actually set on the `Conversation` row.
+`colt_application.reply_classification.determine_conversation_transition` decides that
+deterministically — the same "model judges, code decides" split `ScoringAgent` (§12.7,
+Milestone 13) already established for lead scoring. Two rules the model's own recommendation
+can never override: a terminal conversation (`UNSUBSCRIBED`/`HUMAN_HANDOFF`) never moves again
+from a later reply, and a `HIGH`-urgency reply always produces `HUMAN_HANDOFF` regardless of
+what was recommended. This is the literal mechanism behind "high-intent replies produce the
+correct handoff" holding deterministically — it does not depend on the model remembering to
+recommend a handoff itself. `RecordReplyClassification` records a `reply_classified`
+`ConversationEvent` carrying every §12.10 field plus the suggested response (read by a human,
+never auto-sent), and — only when the applied transition actually lands on `HUMAN_HANDOFF` — a
+second, distinct `handoff_created` event, since §10.13 lists both as their own event types.
+
+`classify_reply_activity` (`colt_workflows`) wires a real `AgentRuntime` running
+`ReplyIntelligenceAgent` behind Temporal, the same composition-root shape `research_company_
+activity`/`draft_next_message_activity` (Milestone 18) already established — it opens its own
+tenant-scoped session, reads the reply's own content from the most recent `message_received`
+`ConversationEvent` (`ProcessInboundEmail`, Milestone 17, already stores `from_email`/`subject`/
+`body` there), and constructs a real `AnthropicGateway`. `LeadOutreachWorkflow` calls it the
+moment `check_conversation_activity` detects a reply, immediately before returning its
+`REPLIED` outcome — the literal "if a reply is received: terminate automated sequence; classify
+reply" (§23.1). This is the first real caller `ProcessInboundEmail`'s own reply-ingestion path
+has had since Milestone 17 built it with none.
+
+Milestone 19's acceptance criterion — "incoming replies update the conversation state
+deterministically and high-intent replies produce the correct handoff" — is proven at two
+layers. The deterministic transition logic itself (the literal subject of the acceptance
+criterion) is proven against real Postgres in `tests/integration/test_reply_intelligence.py`:
+a HIGH-urgency reply always produces a handoff regardless of the recommended state, a LOW-
+urgency reply applies the model's own recommendation with no handoff, and a reply to an
+already-unsubscribed conversation never reopens it. `ReplyIntelligenceAgent` itself is proven
+hermetically only (`packages/python/colt-agents/tests/test_colt_agents_reply_intelligence_
+agent.py`) — no real Anthropic key exists in this environment, the same caveat carried since
+Milestone 08.

@@ -32,6 +32,10 @@ from colt_workflows.activities.lead_outreach import (
     ResearchCompanyInput,
     ResearchCompanyOutput,
 )
+from colt_workflows.activities.reply_intelligence import (
+    ClassifyReplyActivityInput,
+    ClassifyReplyActivityOutput,
+)
 from colt_workflows.activities.send_email import SendEmailActivityInput, SendEmailActivityOutput
 from colt_workflows.workflows.lead_outreach import LeadOutreachOutcome, LeadOutreachWorkflow
 
@@ -65,6 +69,7 @@ async def _run(
     send_email_activity: _Activity,
     check_conversation_activity: _Activity,
     research_company_activity: _Activity | None = None,
+    classify_reply_activity: _Activity | None = None,
 ) -> LeadOutreachOutcome:
     activities: list[_Activity] = [
         load_outreach_state_activity,
@@ -74,6 +79,8 @@ async def _run(
     ]
     if research_company_activity is not None:
         activities.append(research_company_activity)
+    if classify_reply_activity is not None:
+        activities.append(classify_reply_activity)
 
     async with (
         await WorkflowEnvironment.start_time_skipping() as env,
@@ -255,7 +262,10 @@ async def test_stops_when_policy_denies_for_a_non_approval_reason() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stops_the_sequence_when_the_lead_replies() -> None:
+async def test_stops_the_sequence_when_the_lead_replies_and_classifies_it() -> None:
+    conversation_id = str(uuid.uuid4())
+    classify_calls: list[ClassifyReplyActivityInput] = []
+
     @activity.defn(name="load_outreach_state_activity")
     async def load_outreach_state_activity(input: LoadOutreachStateInput) -> OutreachState:
         return _eligible_state()
@@ -272,16 +282,28 @@ async def test_stops_the_sequence_when_the_lead_replies() -> None:
     async def check_conversation_activity(
         input: CheckConversationInput,
     ) -> CheckConversationOutput:
-        return CheckConversationOutput(replied=True, unsubscribed=False)
+        return CheckConversationOutput(
+            replied=True, unsubscribed=False, conversation_id=conversation_id
+        )
+
+    @activity.defn(name="classify_reply_activity")
+    async def classify_reply_activity(
+        input: ClassifyReplyActivityInput,
+    ) -> ClassifyReplyActivityOutput:
+        classify_calls.append(input)
+        return ClassifyReplyActivityOutput(applied_state="QUESTION")
 
     result = await _run(
         load_outreach_state_activity=load_outreach_state_activity,
         draft_next_message_activity=draft_next_message_activity,
         send_email_activity=send_email_activity,
         check_conversation_activity=check_conversation_activity,
+        classify_reply_activity=classify_reply_activity,
     )
 
     assert result.status == "REPLIED"
+    (call,) = classify_calls
+    assert call.conversation_id == conversation_id
 
 
 @pytest.mark.asyncio

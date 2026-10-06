@@ -41,6 +41,10 @@ with workflow.unsafe.imports_passed_through():
         load_outreach_state_activity,
         research_company_activity,
     )
+    from colt_workflows.activities.reply_intelligence import (
+        ClassifyReplyActivityInput,
+        classify_reply_activity,
+    )
     from colt_workflows.activities.send_email import SendEmailActivityInput, send_email_activity
 
 #: How often to poll while waiting on a human approval decision, and the longest this workflow
@@ -143,9 +147,19 @@ class LeadOutreachWorkflow:
             if conversation.unsubscribed:
                 return LeadOutreachOutcome(status="UNSUBSCRIBED", detail="")
             if conversation.replied:
-                # Deliberately out of scope: classifying what the reply means and deciding how
-                # to respond is `ReplyIntelligenceAgent`'s job (CLAUDE.md §12.10, Milestone 19)
-                # — the same scope boundary `ProcessInboundEmail` (Milestone 17) already draws.
+                # "If a reply is received: terminate automated sequence; classify reply"
+                # (CLAUDE.md §23.1) — ReplyIntelligenceAgent (§12.10, Milestone 19) does the
+                # classification; this workflow's own job ends at terminating the sequence.
+                if conversation.conversation_id is not None:
+                    await workflow.execute_activity(
+                        classify_reply_activity,
+                        ClassifyReplyActivityInput(
+                            organization_id=organization_id,
+                            conversation_id=conversation.conversation_id,
+                        ),
+                        start_to_close_timeout=timedelta(seconds=120),
+                        retry_policy=_DEFAULT_RETRY_POLICY,
+                    )
                 return LeadOutreachOutcome(status="REPLIED", detail="")
 
             # Neither — sequence continuation: loop back and re-evaluate state for the next step.

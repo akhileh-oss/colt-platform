@@ -31,5 +31,13 @@ no less correct, and still fully durable. `workflow_id`/`workflow_run_id` are pa
 every `AgentRuntime.run()` call so each `AgentRun` row is traceable back to the workflow
 execution that produced it.
 
+`classify_reply_activity` (CLAUDE.md §12.10, §23.1, Milestone 19) wires a real `AgentRuntime`
+running `ReplyIntelligenceAgent`, the same composition-root shape every other activity in this
+package already uses. `LeadOutreachWorkflow` calls it the moment `check_conversation_activity`
+detects a reply, right before returning — the literal "if a reply is received: terminate
+automated sequence; classify reply" (§23.1). It reads the reply's own content from the most
+recent `message_received` `ConversationEvent` `ProcessInboundEmail` (Milestone 17) already
+stored, rather than taking the reply text as its own input.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

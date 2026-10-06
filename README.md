@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 18 — Outreach Workflow: complete.**
+**Milestone 19 — Reply Intelligence: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -211,6 +211,22 @@ restarts" is covered by Milestone 06's own literal proof of the same underlying 
 mechanism this workflow's worker shares, since `LeadOutreachWorkflow` cannot reach a durable wait
 state without a real model call to draft a message first.
 
+Milestone 19 builds `ReplyIntelligenceAgent` (`CLAUDE.md` §12.10): it classifies one inbound
+reply — intent, sentiment, urgency, objection, whether it asks a question or signals wanting a
+meeting, a recommended conversation-state transition, confidence, and a suggested response a
+human reads before ever sending it ("suggested response generation" is a Build item, never an
+automated send). What actually happens to the `Conversation` is never the model's own
+recommendation taken verbatim: `colt_application.reply_classification.determine_conversation_
+transition` decides it deterministically — a HIGH-urgency reply always produces a `HUMAN_
+HANDOFF` regardless of what was recommended, and a terminal conversation never reopens from a
+later reply — which is what makes "high-intent replies produce the correct handoff" hold even if
+the model forgets to ask for one itself. `LeadOutreachWorkflow` (Milestone 18) now calls the new
+`classify_reply_activity` the moment it detects a reply, right before stopping the sequence — the
+literal "if a reply is received: terminate automated sequence; classify reply" (§23.1). No real
+Anthropic key exists in this environment, so `ReplyIntelligenceAgent` itself is proven
+hermetically only; the deterministic transition logic the acceptance criterion actually turns on
+is proven against real Postgres.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -232,7 +248,8 @@ state without a real model call to draft a message first.
 | 16        | Policy + approval system              | ✅ Complete                    |
 | 17        | Email subsystem                       | ✅ Complete (see caveat above) |
 | 18        | Outreach workflow                     | ✅ Complete (see caveat above) |
-| 19–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 19        | Reply intelligence                    | ✅ Complete (see caveat above) |
+| 20–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

@@ -46,6 +46,18 @@ one tool, `draft_message`, independently re-validates every evidence id against 
 guaranteed to be the same set `select_evidence` already checked. `EXAMPLE_AGENT_DEFINITION`/
 `build_get_lead_tool` remain as Milestone 09's scaffolding.
 
+`REPLY_INTELLIGENCE_AGENT_DEFINITION` (§12.10, Milestone 19) classifies one inbound reply —
+`intent`, `sentiment`, `urgency`, `objection`, `asks_question`, `meeting_signal`, a
+`recommended_state_transition`, `confidence`, and a `suggested_response` a human reads before
+ever sending it. Its one tool, `record_reply_classification`, never applies the model's own
+`recommended_state_transition` as-is: `colt_application.reply_classification.determine_
+conversation_transition` decides the state actually applied, deterministically — a HIGH-urgency
+reply always produces a `HUMAN_HANDOFF` regardless of what the model recommended, and a
+conversation already closed (`UNSUBSCRIBED`/`HUMAN_HANDOFF`) never reopens from a later reply.
+`ReplyIntent`/`Sentiment` are this milestone's own closed vocabularies, the same documented-
+design-decision pattern `CampaignStatus` (Milestone 14) already established where CLAUDE.md
+names a field without enumerating its values.
+
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)
 for the full mechanism (permission filtering, persistence, redaction, the evidence pipeline),
 and [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how

@@ -52,6 +52,15 @@ from colt_agents.personalization_agent import (
 from colt_agents.ports import AgentRunRepository, ToolCallRepository
 from colt_agents.prompts import load_prompt
 from colt_agents.registry import ToolRegistry
+from colt_agents.reply_intelligence_agent import AGENT_NAME as REPLY_INTELLIGENCE_AGENT_NAME
+from colt_agents.reply_intelligence_agent import AGENT_VERSION as REPLY_INTELLIGENCE_AGENT_VERSION
+from colt_agents.reply_intelligence_agent import (
+    REPLY_INTELLIGENCE_AGENT_DEFINITION,
+    ReplyClassification,
+    ReplyIntelligenceAgentInput,
+    ReplyIntent,
+    Sentiment,
+)
 from colt_agents.research_agent import AGENT_NAME as RESEARCH_AGENT_NAME
 from colt_agents.research_agent import AGENT_VERSION as RESEARCH_AGENT_VERSION
 from colt_agents.research_agent import (
@@ -96,6 +105,9 @@ __all__ = [
     "PERSONALIZATION_AGENT_DEFINITION",
     "PERSONALIZATION_AGENT_NAME",
     "PERSONALIZATION_AGENT_VERSION",
+    "REPLY_INTELLIGENCE_AGENT_DEFINITION",
+    "REPLY_INTELLIGENCE_AGENT_NAME",
+    "REPLY_INTELLIGENCE_AGENT_VERSION",
     "RESEARCH_AGENT_DEFINITION",
     "RESEARCH_AGENT_NAME",
     "RESEARCH_AGENT_VERSION",
@@ -129,10 +141,14 @@ __all__ = [
     "PersonalizationAgentInput",
     "PersonalizationStrategy",
     "PromptNotFoundError",
+    "ReplyClassification",
+    "ReplyIntelligenceAgentInput",
+    "ReplyIntent",
     "ResearchAgentInput",
     "ResearchDossier",
     "ScoringAgentInput",
     "ScoringAgentOutput",
+    "Sentiment",
     "SignalAgentInput",
     "SignalAgentOutput",
     "Tool",

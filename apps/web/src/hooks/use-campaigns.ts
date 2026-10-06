@@ -115,8 +115,7 @@ export function useAddSequenceStep(campaignId: string) {
 }
 
 /**
- * A campaign's drafted messages, pending review (CLAUDE.md §12.9, §68 Milestone 15).
- * Read-only here — approving or rejecting a draft is Milestone 16's job.
+ * A campaign's drafted messages, pending review (CLAUDE.md §12.9, §68 Milestones 15-16).
  */
 export function useMessages(campaignId: string) {
   return useQuery({
@@ -128,5 +127,45 @@ export function useMessages(campaignId: string) {
       if (error) throw error;
       return data.messages;
     },
+  });
+}
+
+/**
+ * Approve or reject a drafted message (CLAUDE.md §10.17, §68 Milestone 16) — the policy
+ * engine's `REQUIRE_APPROVAL` decision is only ever cleared by a real human decision here.
+ */
+export function useApproveMessage(campaignId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, reason }: { messageId: string; reason?: string }) => {
+      const { data, error } = await apiClient.POST(
+        "/api/v1/campaigns/{campaign_id}/messages/{message_id}/approve",
+        {
+          params: { path: { campaign_id: campaignId, message_id: messageId } },
+          body: { reason: reason ?? null },
+        },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: messagesQueryKey(campaignId) }),
+  });
+}
+
+export function useRejectMessage(campaignId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, reason }: { messageId: string; reason?: string }) => {
+      const { data, error } = await apiClient.POST(
+        "/api/v1/campaigns/{campaign_id}/messages/{message_id}/reject",
+        {
+          params: { path: { campaign_id: campaignId, message_id: messageId } },
+          body: { reason: reason ?? null },
+        },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: messagesQueryKey(campaignId) }),
   });
 }

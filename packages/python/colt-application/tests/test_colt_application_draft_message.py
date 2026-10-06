@@ -60,6 +60,22 @@ class FakeMessageRepository:
             m for m in self.added if m.lead_id == lead_id and m.sequence_step_id == sequence_step_id
         ]
 
+    async def update_approval_status(self, message_id: UUID, *, approval_status: str) -> Message:
+        raise NotImplementedError
+
+    async def update_send_result(
+        self,
+        message_id: UUID,
+        *,
+        status: str,
+        sent_at: datetime,
+        provider_message_id: str | None,
+    ) -> Message:
+        raise NotImplementedError
+
+    async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int:
+        raise NotImplementedError
+
 
 def _evidence() -> Evidence:
     return Evidence(

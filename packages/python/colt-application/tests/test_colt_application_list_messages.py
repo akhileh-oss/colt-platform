@@ -52,6 +52,22 @@ class FakeMessageRepository:
     ) -> list[Message]:
         raise NotImplementedError
 
+    async def update_approval_status(self, message_id: UUID, *, approval_status: str) -> Message:
+        raise NotImplementedError
+
+    async def update_send_result(
+        self,
+        message_id: UUID,
+        *,
+        status: str,
+        sent_at: datetime,
+        provider_message_id: str | None,
+    ) -> Message:
+        raise NotImplementedError
+
+    async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int:
+        raise NotImplementedError
+
 
 def _campaign() -> Campaign:
     return Campaign(

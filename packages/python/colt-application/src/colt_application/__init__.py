@@ -9,10 +9,12 @@ from colt_application.campaign_state import (
 from colt_application.errors import (
     ApplicationError,
     CampaignValidationError,
+    InvalidApprovalTransitionError,
     InvalidCampaignTransitionError,
     MessageValidationError,
     NotFoundError,
     OrganizationContextError,
+    PolicyDeniedError,
 )
 from colt_application.identity import DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD
 from colt_application.research import (
@@ -36,7 +38,9 @@ from colt_application.signals import (
     rank_signal,
 )
 from colt_application.use_cases.add_sequence_step import AddSequenceStep
+from colt_application.use_cases.add_suppression_entry import AddSuppressionEntry
 from colt_application.use_cases.create_campaign import CreateCampaign
+from colt_application.use_cases.decide_message_approval import DecideMessageApproval
 from colt_application.use_cases.discover_company import DiscoverCompany
 from colt_application.use_cases.discover_person import DiscoverPerson
 from colt_application.use_cases.draft_message import DraftMessage
@@ -60,6 +64,7 @@ from colt_application.use_cases.score_lead import ScoreLead
 from colt_application.use_cases.select_personalization_evidence import (
     SelectPersonalizationEvidence,
 )
+from colt_application.use_cases.send_message import SendMessage
 from colt_application.use_cases.validate_campaign import ValidateCampaign
 
 __version__ = "0.1.0"
@@ -78,9 +83,11 @@ __all__ = [
     "SIGNAL_TYPE_WEIGHTS",
     "STALE_SIGNAL_DECAY_FACTOR",
     "AddSequenceStep",
+    "AddSuppressionEntry",
     "ApplicationError",
     "CampaignValidationError",
     "CreateCampaign",
+    "DecideMessageApproval",
     "DiscoverCompany",
     "DiscoverPerson",
     "DraftMessage",
@@ -88,6 +95,7 @@ __all__ = [
     "EnrichPerson",
     "GetCampaign",
     "GetLead",
+    "InvalidApprovalTransitionError",
     "InvalidCampaignTransitionError",
     "ListCampaigns",
     "ListEvidenceForLead",
@@ -98,12 +106,14 @@ __all__ = [
     "OrganizationContext",
     "OrganizationContextError",
     "PauseCampaign",
+    "PolicyDeniedError",
     "RecordEvidence",
     "RecordSignal",
     "ResolveOrganizationContext",
     "ResumeCampaign",
     "ScoreLead",
     "SelectPersonalizationEvidence",
+    "SendMessage",
     "ValidateCampaign",
     "__version__",
     "can_transition",

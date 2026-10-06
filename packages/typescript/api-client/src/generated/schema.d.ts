@@ -56,6 +56,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/messages/{message_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a drafted message */
+        post: operations["approve_message_api_v1_campaigns__campaign_id__messages__message_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/messages/{message_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a drafted message */
+        post: operations["reject_message_api_v1_campaigns__campaign_id__messages__message_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/pause": {
         parameters: {
             query?: never;
@@ -354,6 +388,11 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** DecideMessageApprovalRequest */
+        DecideMessageApprovalRequest: {
+            /** Reason */
+            reason?: string | null;
+        };
         /**
          * ErrorCode
          * @description The error classification required by CLAUDE.md §36.
@@ -409,8 +448,8 @@ export interface components {
         };
         /**
          * MessageResponse
-         * @description The message review UI's read model (Milestone 15). Approve/reject actions are
-         *     Milestone 16's (Policy + Approval System) job — this is inspection only.
+         * @description The message review UI's read model (Milestone 15); `approve`/`reject` (Milestone 16)
+         *     return this same shape so a caller sees the decision reflected immediately.
          */
         MessageResponse: {
             /** Approval Status */
@@ -748,6 +787,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approve_message_api_v1_campaigns__campaign_id__messages__message_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideMessageApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reject_message_api_v1_campaigns__campaign_id__messages__message_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideMessageApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation error */

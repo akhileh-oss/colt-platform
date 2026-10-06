@@ -79,5 +79,19 @@ one. `get_brand_voice()`/`DEFAULT_BRAND_VOICE` read `Organization.settings["bran
 documented in-code fallback — CLAUDE.md names brand voice as model input for §12.9 without
 specifying its storage, so this is this milestone's own documented design decision.
 
+`DecideMessageApproval`/`AddSuppressionEntry`/`SendMessage` (CLAUDE.md §17, §10.17-§10.18,
+Milestone 16) are the policy + approval system. `SendMessage` gathers an `OutboundSendContext`
+from its own ports and calls `colt_policy.evaluate_outbound_send()`; it raises
+`PolicyDeniedError` _instead of_ calling `MessageSender.send` on anything but `ALLOW` — never
+after — which is the literal mechanism behind this milestone's acceptance criterion, "a policy
+violation cannot result in an external message send." `DecideMessageApproval` lazily creates
+the `Approval` row representing a message's standing approval request the first time a
+decision is made (CLAUDE.md names no separate request step), and only an approval — never a
+rejection — moves the lead from `PENDING_APPROVAL` to `READY`. `auto_approval_enabled` is a
+plain boolean parameter on `SendMessage`, not a config read: this package cannot depend on
+`colt_config` (§5's layering), so whether the `ENABLE_AUTO_APPROVAL` feature flag (§51) is on is
+the caller's (the API layer's) job to resolve and pass in as data, the same as every other use
+case here taking plain scalar arguments.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

@@ -37,6 +37,14 @@ every role that can review a message already carries it. It is the first route w
 only ever written by an agent pipeline (`PersonalizationAgent` → `MessagingAgent`) rather than
 by another HTTP request; the route itself still only calls `colt_application.ListMessages`.
 
+`POST /campaigns/{id}/messages/{message_id}/approve` and `/reject` (Milestone 16) finally make
+the message-review UI's buttons real, both gated by `MESSAGE_APPROVE`. Both verify the message
+actually belongs to the campaign named in the URL before deciding it — the nested route accepts
+`campaign_id` for REST shape, but nothing upstream of this check enforced that it matches the
+message's own `campaign_id`. `InvalidApprovalTransitionError` (an already-decided approval)
+maps to the existing `ConflictError` (409), the same taxonomy slot `InvalidCampaignTransitionError`
+uses.
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

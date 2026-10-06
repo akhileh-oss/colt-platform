@@ -294,3 +294,34 @@ _To be documented as Milestones 10–22 land. The loop is specified in `CLAUDE.m
 ## 10. Deployment topology
 
 _To be documented in Milestone 25._
+
+## 11. Policy engine (Milestone 16)
+
+`colt_policy.evaluate_outbound_send()` (`CLAUDE.md` §17) is a pure function, not a service: it
+takes an `OutboundSendContext` of already-resolved booleans and returns a `PolicyEvaluation`
+(`ALLOW`/`DENY`/`REQUIRE_APPROVAL`/`DEFER` plus which checks failed). `colt_policy` depends only
+on `colt_domain` (see the package map in §3), so it cannot reach a database, a clock, or a
+provider itself — gathering the facts to evaluate is the caller's job. That caller is
+`colt_application.SendMessage`, the one use case allowed to invoke `MessageSender.send`, and
+only after the engine returns `ALLOW`. This is the literal mechanism behind Milestone 16's
+acceptance criterion, "a policy violation cannot result in an external message send": the send
+call sits _after_ the policy check in the same function, never reachable from a denied branch,
+so a test can assert a fake sender was never invoked rather than merely that an error was
+raised.
+
+Twelve of §17.1's fifteen mandatory checks are modeled today (lead/organization match, target
+identity validity, suppression, channel/campaign-status/rate-limit/evidence/duplicate-send,
+approval, send-window). The remaining three — contact-permission rules, provider-credential
+validity, and compliance checks — have no represented infrastructure yet (no real channel
+provider exists before Milestone 17's email subsystem) and are deliberately left unmodeled
+rather than represented by an always-true stub; `colt_policy.outbound`'s own module docstring
+names them.
+
+`Approval` (§10.17) and `SuppressionEntry` (§10.18) are new tenant-owned tables with the usual
+Row-Level Security, with one departure: `SuppressionEntry.organization_id` is nullable "for
+system-wide policy" (§10.18's own words), so its RLS policy is `organization_id = current_
+setting(...) OR organization_id IS NULL` rather than the equality-only policy every other table
+uses — a NULL-organization row is meant to be visible to every tenant, not hidden from all of
+them. `SqlAlchemySuppressionRepository.is_suppressed()` likewise queries both an organization's
+own entries and every global one in a single call, rather than going through
+`TenantScopedRepository._select_scoped()`'s strict equality filter.

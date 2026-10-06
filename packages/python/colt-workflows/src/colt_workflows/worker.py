@@ -18,9 +18,16 @@ from temporalio.worker import Worker
 from colt_config import Settings, get_settings
 from colt_observability import configure_tracing, get_logger, instrument_sqlalchemy
 from colt_workflows.activities.example import greet
+from colt_workflows.activities.lead_outreach import (
+    check_conversation_activity,
+    draft_next_message_activity,
+    load_outreach_state_activity,
+    research_company_activity,
+)
 from colt_workflows.activities.send_email import send_email_activity
 from colt_workflows.activities.trace_check import count_organizations
 from colt_workflows.workflows.example import ExampleWorkflow
+from colt_workflows.workflows.lead_outreach import LeadOutreachWorkflow
 from colt_workflows.workflows.send_email import SendEmailWorkflow
 from colt_workflows.workflows.trace_check import TraceCheckWorkflow
 
@@ -28,8 +35,21 @@ logger = get_logger(__name__)
 
 #: Every workflow and activity this worker executes. Later milestones register their own here
 #: as they add real workflows.
-WORKFLOWS: Sequence[type] = (ExampleWorkflow, TraceCheckWorkflow, SendEmailWorkflow)
-ACTIVITIES: Sequence[Any] = (greet, count_organizations, send_email_activity)
+WORKFLOWS: Sequence[type] = (
+    ExampleWorkflow,
+    TraceCheckWorkflow,
+    SendEmailWorkflow,
+    LeadOutreachWorkflow,
+)
+ACTIVITIES: Sequence[Any] = (
+    greet,
+    count_organizations,
+    send_email_activity,
+    load_outreach_state_activity,
+    research_company_activity,
+    draft_next_message_activity,
+    check_conversation_activity,
+)
 
 
 async def run_worker(

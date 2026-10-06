@@ -374,3 +374,50 @@ send a simulated reply into the same local Mailpit (exploiting its catch-all nat
 `localhost`. A hard bounce has no real provider webhook in this environment and Mailpit cannot
 generate one, so `ProcessBounce` is proven hermetically only — the same "no real X" posture
 Milestone 12 documented for signal sources.
+
+## 13. Outreach workflow (Milestone 18)
+
+`LeadOutreachWorkflow` (`colt_workflows`) is §24.3's conceptual workflow built for real: load
+state → validate qualification → research if stale/missing → personalize → draft → policy check
+→ approval wait → send → response wait → sequence continuation. Every step that performs a side
+effect is its own activity (§24.1's "workflows must not perform raw network calls or database
+access directly"); the workflow itself only branches on each activity's returned state and
+sleeps between polls. `load_outreach_state_activity` reads the lead's current status, campaign
+status, suppression state, the company's evidence freshness, and which sequence step (if any)
+hasn't been sent yet — everything the workflow needs to decide what to do next, gathered once per
+loop iteration rather than scattered across several smaller activities.
+
+`research_company_activity` and `draft_next_message_activity` are the first activities to wire a
+real `AgentRuntime` — ResearchAgent, then PersonalizationAgent and MessagingAgent in sequence —
+behind Temporal rather than a direct application-layer call, following `colt_workflows`'
+established "activity opens its own tenant-scoped session and composes real adapters" shape
+(`send_email_activity`, Milestone 17). `activity.info().workflow_id`/`.workflow_run_id` are
+passed through to `AgentRuntime.run()` so each resulting `AgentRun` row traces back to the
+workflow execution that produced it — closing a gap no prior milestone needed, since no earlier
+workflow ever invoked an agent.
+
+Approval-wait and response-wait are both polling loops, not Temporal signals: rather than wiring
+the existing `POST .../approve` route and the `ProcessInboundEmail`/`UnsubscribeByToken` call
+sites to also push a signal into whichever `LeadOutreachWorkflow` execution corresponds to that
+lead, the workflow itself re-checks the same Postgres rows those paths already write
+(`Message.approval_status` via `send_email_activity`'s own `PolicyDeniedError` surfacing as a
+retryable "pending approval" condition; `Conversation.last_activity_at`/`Lead.status` via
+`check_conversation_activity`), sleeping between checks with `workflow.execute_activity`'s normal
+retry policy. This changes nothing about Milestone 16/17's already-shipped routes and is no less
+durable — `workflow.sleep` is tracked by the Temporal server exactly like every other awaited
+point in the workflow.
+
+The acceptance criterion — "workflow survives restarts, does not duplicate sends, and reacts
+correctly to replies/unsubscribes" — is proven in three different ways, each at the layer where
+it is actually provable in this environment. "Does not duplicate sends" is `SendMessage`'s own
+cross-row idempotency check (Milestone 16/17's own proof, composed unchanged here — nothing new
+to re-prove). "Reacts correctly to replies/unsubscribes" is proven against real Postgres in
+`tests/integration/test_lead_outreach_activities.py`, calling `load_outreach_state_activity`/
+`check_conversation_activity` directly as plain coroutines (neither touches `activity.info()`,
+so this needs no running worker) against seeded Lead/Conversation/SuppressionEntry rows. "Survives
+restarts" is covered by Milestone 06's own literal subprocess-kill proof of the underlying
+Temporal mechanism (workflow state lives in the server, not worker process memory) — this
+workflow's worker registration shares that exact mechanism, and `LeadOutreachWorkflow` itself
+cannot reach a durable wait state without first drafting a message, which needs a real
+Anthropic call no key in this environment can make; re-running Milestone 06's subprocess test
+against this specific workflow would only exercise the Temporal SDK a second time.

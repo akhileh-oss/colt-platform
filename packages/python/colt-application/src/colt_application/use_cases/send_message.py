@@ -97,6 +97,16 @@ class SendMessage:
                 evidence_valid = False
                 break
 
+        # §24.4/§29.2: an idempotency key derived from stable business identifiers, checked
+        # against every message (not just this row) sharing this lead/step slot — a *different*
+        # drafted version of the same lead/step that already completed a send must also block
+        # this one, not only a retry of this exact row.
+        idempotency_key = f"{campaign.id}:{message.lead_id}:{message.sequence_step_id}"
+        prior_send = await self._messages.get_by_idempotency_key(idempotency_key)
+        no_duplicate_send = message.status != "SENT" and (
+            prior_send is None or prior_send.id == message.id
+        )
+
         auto_approve_allowed = (
             auto_approval_enabled and campaign.approval_policy.get("mode") == "auto"
         )
@@ -114,7 +124,7 @@ class SendMessage:
             message_matches_target=message.lead_id == lead.id
             and message.campaign_id == campaign.id,
             evidence_valid=evidence_valid,
-            no_duplicate_send=message.status != "SENT",
+            no_duplicate_send=no_duplicate_send,
             approval_required=approval_required,
             approval_status=approval_status,
             send_window_ok=True,
@@ -123,9 +133,13 @@ class SendMessage:
         if evaluation.decision != PolicyDecision.ALLOW:
             raise PolicyDeniedError(evaluation.decision.value, evaluation.failed_checks)
 
-        provider_message_id = await self._sender.send(message)
+        provider_message_id = await self._sender.send(message, recipient=person)
         updated = await self._messages.update_send_result(
-            message_id, status="SENT", sent_at=now, provider_message_id=provider_message_id
+            message_id,
+            status="SENT",
+            sent_at=now,
+            provider_message_id=provider_message_id,
+            idempotency_key=idempotency_key,
         )
         if lead.status == LeadStatus.READY:
             await self._leads.update_status(lead.id, LeadStatus.CONTACTED, at=now)

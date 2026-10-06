@@ -15,6 +15,7 @@ from colt_db.models.audit_log import AuditLogModel
 from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
 from colt_db.models.conversation import ConversationModel
+from colt_db.models.conversation_event import ConversationEventModel
 from colt_db.models.evidence import EvidenceModel
 from colt_db.models.lead import LeadModel
 from colt_db.models.lead_score import LeadScoreModel
@@ -37,6 +38,7 @@ from colt_domain import (
     CampaignStatus,
     Company,
     Conversation,
+    ConversationEvent,
     ConversationState,
     EmailStatus,
     Evidence,
@@ -270,6 +272,18 @@ def conversation_to_domain(model: ConversationModel) -> Conversation:
         last_activity_at=model.last_activity_at,
         created_at=model.created_at,
         updated_at=model.updated_at,
+    )
+
+
+def conversation_event_to_domain(model: ConversationEventModel) -> ConversationEvent:
+    return ConversationEvent(
+        id=model.id,
+        organization_id=model.organization_id,
+        conversation_id=model.conversation_id,
+        event_type=model.event_type,
+        metadata=model.event_metadata,
+        occurred_at=model.occurred_at,
+        created_at=model.created_at,
     )
 
 

@@ -133,9 +133,16 @@ class EmailSettings(BaseSettings):
     provider: str = "mailpit"
     smtp_host: str = "localhost"
     smtp_port: int = Field(default=1025, gt=0, le=65535)
+    smtp_use_tls: bool = False
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
     from_address: str = "outbound@example.test"
     from_name: str = "Colt"
     api_key: SecretStr = SecretStr("")
+    #: Mailpit's own REST API (CLAUDE.md §29 — inbound processing and the acceptance test both
+    #: read sent/received mail back through this, never a real provider's inbound webhook,
+    #: which Milestone 17 has no real provider to receive from).
+    mailpit_api_base_url: str = "http://localhost:8025"
 
 
 class CRMSettings(BaseSettings):

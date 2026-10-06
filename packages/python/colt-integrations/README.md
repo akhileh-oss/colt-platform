@@ -21,6 +21,20 @@ SignalTriggerPayload]`). `FakeSignalTriggerSource` is the only adapter built so 
 - `colt_integrations.errors` — `ProviderError` and its subtypes, with
   `classify_http_status()` mapping a provider's HTTP status to the right one, mirroring
   `colt_ai.errors.classify()`.
+- `colt_integrations.email` (CLAUDE.md §29, Milestone 17) — the `EmailProvider` port.
+  `SmtpEmailProvider` is real SMTP (`smtplib`/`email`, the blocking call wrapped in
+  `asyncio.to_thread`), speaking to local Mailpit by default and to a real provider's relay when
+  `FEATURE_REAL_EMAIL` is on — one class serves both this milestone's "Mailpit adapter" and "real
+  provider adapter behind feature flag" Build items, since CLAUDE.md names no specific
+  commercial email API. It sets `Message-ID`/`In-Reply-To`/`References` for threading and RFC
+  8058 `List-Unsubscribe`/`List-Unsubscribe-Post` headers. `MailpitInboxClient` reads mail back
+  out of Mailpit's own REST API (never a real provider's inbound webhook, which has nothing to
+  receive from here) — verified against Mailpit's actual API shape via live testing, not
+  assumed: `MessageID` on `GET /message/{id}` has no brackets, but `In-Reply-To` only exists on
+  the separate `GET /message/{id}/headers` endpoint, bracketed. `EmailMessageSender` is the
+  `MessageSender` port's first real implementation: it resolves §29.1's threading by looking up
+  the most recent prior send to the same lead/step and sets the outgoing `In-Reply-To`/
+  `References` and unsubscribe-link headers from it.
 
 Every adapter has an explicit test double (CLAUDE.md §28.1) — `FakeSearchProvider` is one; no
 real-network call is ever silently substituted with a fabricated "plausible" result (§0.4).

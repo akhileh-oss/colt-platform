@@ -36,5 +36,16 @@ Milestone 15's append-only "versions" rule: that rule protects drafted _content_
 silently overwritten, not the lifecycle status of the one row a human or the policy engine is
 actually deciding about.
 
+`conversation_events` (CLAUDE.md §10.13, Milestone 17) is a new table — append-only, no
+`updated_at`, standard RLS (no departure needed, unlike `suppression_entries`). `event_metadata`
+is this model's own column name for the domain entity's `metadata` field: `metadata` is reserved
+on a Declarative model. `SqlAlchemyMessageRepository` gained `get_by_provider_message_id()` (how
+an inbound reply resolves to the outbound `Message` it answers, §29.1) and `update_send_result()`
+gained an optional `idempotency_key` parameter, claimed only at successful send time rather than
+at draft time — see `colt-application`'s README for why. `SqlAlchemyConversationRepository`
+(real since Milestone 05, but unused by any use case until now) gained `get_by_lead_and_channel()`,
+`touch_last_activity()`, and `update_state()` — the last for `UnsubscribeByToken` terminating a
+lead's open conversation.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

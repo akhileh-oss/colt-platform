@@ -36,3 +36,31 @@ class SqlAlchemyConversationRepository(TenantScopedRepository):
         stmt = self._select_scoped(ConversationModel).where(ConversationModel.id == conversation_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return conversation_to_domain(model) if model is not None else None
+
+    async def get_by_lead_and_channel(self, lead_id: UUID, channel: str) -> Conversation | None:
+        """The one open thread a lead has per channel — what inbound reply ingestion (§29.1)
+        resolves an incoming message to."""
+        stmt = self._select_scoped(ConversationModel).where(
+            ConversationModel.lead_id == lead_id, ConversationModel.channel == channel
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return conversation_to_domain(model) if model is not None else None
+
+    async def touch_last_activity(self, conversation_id: UUID, *, at: datetime) -> Conversation:
+        stmt = self._select_scoped(ConversationModel).where(ConversationModel.id == conversation_id)
+        model = (await self._session.execute(stmt)).scalar_one()
+        model.last_activity_at = at
+        await self._session.flush()
+        await self._session.refresh(model)
+        return conversation_to_domain(model)
+
+    async def update_state(
+        self, conversation_id: UUID, state: ConversationState, *, at: datetime
+    ) -> Conversation:
+        stmt = self._select_scoped(ConversationModel).where(ConversationModel.id == conversation_id)
+        model = (await self._session.execute(stmt)).scalar_one()
+        model.state = state.value
+        model.updated_at = at
+        await self._session.flush()
+        await self._session.refresh(model)
+        return conversation_to_domain(model)

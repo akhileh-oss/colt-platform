@@ -93,5 +93,26 @@ plain boolean parameter on `SendMessage`, not a config read: this package cannot
 the caller's (the API layer's) job to resolve and pass in as data, the same as every other use
 case here taking plain scalar arguments.
 
+`ProcessInboundEmail`/`ProcessBounce`/`UnsubscribeByToken` (CLAUDE.md §29, §10.18, Milestone 17)
+are the email subsystem's application layer. `ConversationRepository`/`ConversationEventRepository`
+(§10.12-§10.13) are this milestone's own new ports — `SqlAlchemyConversationRepository` has
+existed since Milestone 05, and `ConversationEvent` is named in §10.5, but no use case needed
+either until now. `ProcessInboundEmail` resolves a reply's `In-Reply-To` back to the `Message`
+it answers via `MessageRepository.get_by_provider_message_id` (also new), threads it onto that
+lead's email `Conversation` (creating one if this is the lead's first reply), and appends a
+`message_received` event — deliberately not classifying what the reply means, which is
+`ReplyIntelligenceAgent`'s job (Milestone 19). `ProcessBounce` and `UnsubscribeByToken` both
+drive `AddSuppressionEntry` (Milestone 16's mechanism, reused rather than duplicated) and
+terminate the lead's open conversation (`ConversationRepository.update_state`, this milestone's
+own addition to that port); `ProcessBounce` also marks the person's email `INVALID`, and
+`UnsubscribeByToken` moves the `Lead` to the terminal `UNSUBSCRIBED` status. `SendMessage` itself
+gained the idempotency-key claim §24.4/§29.2 actually asks for: the key
+(`campaign_id:lead_id:sequence_step_id`) is computed and checked against every message sharing
+that slot, then claimed only at successful send time via `update_send_result` — claiming it
+earlier, at draft time, would violate the database's own partial unique index the first time a
+second drafted version of the same lead/step existed. `MessageSender.send` gained a `recipient:
+Person` parameter (a port Milestone 16 authored, amended here since its PR was still open) — a
+real channel adapter needs the recipient's address, which `SendMessage` already resolves.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

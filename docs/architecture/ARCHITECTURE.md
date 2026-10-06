@@ -325,3 +325,52 @@ uses — a NULL-organization row is meant to be visible to every tenant, not hid
 them. `SqlAlchemySuppressionRepository.is_suppressed()` likewise queries both an organization's
 own entries and every global one in a single call, rather than going through
 `TenantScopedRepository._select_scoped()`'s strict equality filter.
+
+## 12. Email subsystem (Milestone 17)
+
+`colt_integrations.email` is the first real `MessageSender` channel adapter: `SmtpEmailProvider`
+(real `smtplib`, wrapped in `asyncio.to_thread`) and `EmailMessageSender` (the port
+implementation `SendMessage` calls) sit at the `colt_integrations`/`colt_agents` layer, exactly
+where §5's layering puts a real adapter — `colt_application` never imports either; it only
+depends on the `MessageSender` Protocol, satisfied structurally. `EmailMessageSender` resolves
+§29.1's threading itself: before sending, it looks up every prior message to the same `(lead_id,
+sequence_step_id)` and threads off the most recent one with a stored `provider_message_id`,
+setting `In-Reply-To`/`References` — "incoming messages must resolve to the correct Colt
+conversation" starts with the outgoing message carrying a thread id to resolve _against_.
+
+`SendMessage` claims the idempotency key §24.4/§29.2 describes — `f"{campaign_id}:{lead_id}:
+{sequence_step_id}"` — only at the moment a send actually succeeds, via `update_send_result`,
+never at draft time: the database's own partial unique index on `(organization_id,
+idempotency_key) WHERE idempotency_key IS NOT NULL` would raise on the second drafted version of
+the same lead/step if every draft claimed it uniformly. The check itself is cross-row: `get_by_
+idempotency_key` is queried against every message sharing that slot, not merely re-checked
+against the one row being sent, so a different drafted version that already completed a send
+blocks this one too.
+
+`ProcessInboundEmail`/`ProcessBounce`/`UnsubscribeByToken` (`colt_application`) are §29's inbound
+leg. All three depend only on ports (`MessageRepository`, `ConversationRepository`,
+`ConversationEventRepository`, `LeadRepository`, `PersonRepository`, and `AddSuppressionEntry`
+reused rather than duplicated) — never on `colt_integrations` directly, the same inward-only
+dependency direction every other use case holds. `MailpitInboxClient` (`colt_integrations`) is
+what actually reads a reply back out of Mailpit's REST API; the REST endpoint
+(`routers/v1/unsubscribe.py`) and the Temporal activity (`send_email_activity`,
+`colt_workflows`) are the two places that construct the real adapters and call into these use
+cases — composition roots, same as every other use case's wiring.
+
+`send_email_activity` opens its own tenant-scoped session (`colt_workflows` is the one layer
+allowed to depend on both `colt_application` and `colt_integrations` at once, per §5's layer
+map) and runs the same `SendMessage` path a direct `SendMessage` call would, behind Temporal's
+retry policy — `NotFoundError`/`PolicyDeniedError` are non-retryable (retrying repeats the same
+denial); a `ProviderError`'s own `.retryable` flag decides everything else. `SendEmailWorkflow`
+is the first real product workflow since Milestone 06's foundation example; `LeadOutreachWorkflow`
+(§24.3, Milestone 18) is a separate, broader sequencing workflow this one's single-message send
+leg will eventually sit inside.
+
+Milestone 17's acceptance criterion — "local full outbound lifecycle works without touching the
+public internet" — is proven by `tests/integration/test_email_subsystem.py`: draft → approve →
+send over real SMTP to a local Mailpit → read the send back through Mailpit's own REST API →
+send a simulated reply into the same local Mailpit (exploiting its catch-all nature) →
+`ProcessInboundEmail` → a real `Conversation`/`ConversationEvent` row in Postgres, entirely over
+`localhost`. A hard bounce has no real provider webhook in this environment and Mailpit cannot
+generate one, so `ProcessBounce` is proven hermetically only — the same "no real X" posture
+Milestone 12 documented for signal sources.

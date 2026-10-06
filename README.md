@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 16 — Policy + Approval System: complete.**
+**Milestone 17 — Email Subsystem: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -156,6 +156,41 @@ id}/approve` and `/reject` (Milestone 16) finally make the message-review UI's b
 whether a campaign's own `approval_policy: {mode: "auto"}` is even allowed to skip a human
 decision. No Anthropic call exists anywhere in this milestone — there is nothing to mock; its
 acceptance criterion is proven in full against real Postgres.
+
+Milestone 17 builds the email subsystem (`CLAUDE.md` §29): `colt_integrations.email.
+SmtpEmailProvider` is real SMTP (stdlib `smtplib`), speaking to local Mailpit by default and to
+a real provider's relay when `FEATURE_REAL_EMAIL` is on — one class deliberately serves both the
+"Mailpit adapter" and "real provider adapter behind feature flag" Build items, since CLAUDE.md
+names no specific commercial email API the way it names Apollo or Brave, and SMTP is the one
+wire protocol both targets speak. `EmailMessageSender` (the `MessageSender` port's first real
+implementation) resolves §29.1's threading by looking up the most recent prior send to the same
+lead/step and setting `In-Reply-To`/`References` from its stored `provider_message_id`, and sets
+RFC 8058 one-click unsubscribe headers. `SendMessage` itself (Milestone 16) gained the
+idempotency-key claim §24.4/§29.2 actually asks for: the key is computed from
+`(campaign_id, lead_id, sequence_step_id)` and claimed only at successful send time, checked
+against every message sharing that slot, not merely the one row being sent — a different
+drafted version of the same lead/step that already sent once blocks a second send too.
+`ProcessInboundEmail` resolves an incoming reply's `In-Reply-To` back to the `Message` Colt sent,
+threads it onto that lead's `Conversation` (a real entity/table/port, named since Milestone 05
+but never built until this milestone needed it), and appends a `message_received`
+`ConversationEvent` (§10.13, also never built before now) — deliberately _not_ classifying what
+the reply means, which is `ReplyIntelligenceAgent`'s job (Milestone 19). `ProcessBounce` and
+`UnsubscribeByToken` both suppress the address through `AddSuppressionEntry` (Milestone 16's own
+mechanism, reused rather than duplicated) and terminate the lead's conversation; the unsubscribe
+link's "token" is the sent `Message`'s own id plus its `organization_id` (routing information, not
+a credential — Row-Level Security requires binding a tenant before any lookup can even run), not
+a signed scheme, since a UUIDv4 already has no public mapping back to a person. `SendEmailWorkflow`
+
+- `send_email_activity` (`colt_workflows`) are the milestone's "send queue/workflow" Build item —
+  the first real product workflow since Milestone 06's foundation example, running the exact same
+  policy-gated `SendMessage` path behind Temporal's retry policy. A hard bounce has no real
+  provider webhook to receive in this environment (same "no real X" posture as Milestone 12's
+  signal sources) and Mailpit cannot generate one, so `ProcessBounce` is proven hermetically only.
+  Everything else — draft, approve, send over real SMTP to Mailpit, read the send back through
+  Mailpit's own REST API, send a simulated reply into the same local Mailpit, and thread it onto a
+  real `Conversation`/`ConversationEvent` in Postgres — is proven end to end against real local
+  infrastructure, never the public internet, which is this milestone's literal acceptance
+  criterion.
 
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |

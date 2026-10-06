@@ -39,5 +39,16 @@ automated sequence; classify reply" (§23.1). It reads the reply's own content f
 recent `message_received` `ConversationEvent` `ProcessInboundEmail` (Milestone 17) already
 stored, rather than taking the reply text as its own input.
 
+`sync_entity_to_crm_activity` + `CrmReconciliationWorkflow` (CLAUDE.md §30, Milestone 20) are
+the CRM sync path. The activity is the one composition root that actually calls a `CRMProvider`
+(only `FakeCRMProvider` exists — CLAUDE.md names no real CRM vendor, the same posture
+`SignalTriggerSource` already documents): it loads the real `Company`/`Person`/`Opportunity` row
+to sync (or the caller's own `fields`, for a CRM `Task`, which Colt has no native entity for),
+calls the provider, and records the outcome via `RecordCrmSyncOutcome` before returning or
+re-raising — so the `CrmSyncRecord` row is the durable account of what happened independent of
+Temporal's own retries. `CrmReconciliationWorkflow` durably re-drives a batch of targets through
+that activity, one `RetryPolicy`-governed call per target, and one target's exhausted retries
+never aborts the rest of the batch.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

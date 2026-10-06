@@ -56,6 +56,7 @@ from colt_application.use_cases.list_sequence_steps import ListSequenceSteps
 from colt_application.use_cases.pause_campaign import PauseCampaign
 from colt_application.use_cases.process_bounce import ProcessBounce
 from colt_application.use_cases.process_inbound_email import ProcessInboundEmail
+from colt_application.use_cases.record_crm_sync_outcome import RecordCrmSyncOutcome
 from colt_application.use_cases.record_evidence import RecordEvidence
 from colt_application.use_cases.record_reply_classification import RecordReplyClassification
 from colt_application.use_cases.record_signal import RecordSignal
@@ -114,6 +115,7 @@ __all__ = [
     "PolicyDeniedError",
     "ProcessBounce",
     "ProcessInboundEmail",
+    "RecordCrmSyncOutcome",
     "RecordEvidence",
     "RecordReplyClassification",
     "RecordSignal",

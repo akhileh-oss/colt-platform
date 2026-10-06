@@ -1,5 +1,6 @@
 """Provider adapters implementing the domain-facing ports (CLAUDE.md §28)."""
 
+from colt_integrations.crm import CRMProvider, CrmSyncResult, FakeCRMProvider
 from colt_integrations.enrichment import (
     ApolloEnrichmentProvider,
     CompanyCandidate,
@@ -37,8 +38,11 @@ __version__ = "0.1.0"
 __all__ = [
     "ApolloEnrichmentProvider",
     "BraveSearchProvider",
+    "CRMProvider",
     "CompanyCandidate",
+    "CrmSyncResult",
     "EnrichmentProvider",
+    "FakeCRMProvider",
     "FakeEnrichmentProvider",
     "FakeSearchProvider",
     "FakeSignalTriggerSource",

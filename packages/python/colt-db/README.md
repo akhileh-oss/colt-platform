@@ -47,5 +47,11 @@ at draft time — see `colt-application`'s README for why. `SqlAlchemyConversati
 `touch_last_activity()`, and `update_state()` — the last for `UnsubscribeByToken` terminating a
 lead's open conversation.
 
+`crm_sync_records` (CLAUDE.md §30, Milestone 20) is a new table — plain tenant-owned, standard
+RLS, no departure needed. Unique on `(organization_id, entity_type, entity_id, provider_name)`,
+backing `SqlAlchemyCrmSyncRecordRepository.get_by_target()`'s upsert lookup.
+`SqlAlchemyOpportunityRepository.get()` (present since Milestone 05 but never read by a use case
+until now) is this milestone's first real caller.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

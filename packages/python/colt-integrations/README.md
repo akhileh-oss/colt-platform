@@ -18,6 +18,14 @@ Provider adapters implementing the domain-facing ports (CLAUDE.md §28, §16.1's
 SignalTriggerPayload]`). `FakeSignalTriggerSource` is the only adapter built so far — CLAUDE.md
   names no specific real signal-source provider, and Milestone 12's acceptance criterion
   explicitly accepts "a real/mock trigger."
+- `colt_integrations.crm` (CLAUDE.md §30, Milestone 20) — the `CRMProvider` port
+  (`authenticate`/`sync_contact`/`sync_company`/`sync_opportunity`/`sync_task`).
+  `FakeCRMProvider` is the only adapter built so far — CLAUDE.md names no specific real CRM
+  vendor, the same situation `SignalTriggerSource` is in. Every sync call is keyed by
+  `external_id`, and `FakeCRMProvider` upserts by `(kind, external_id)` so a retry never creates
+  a duplicate provider object (§30's "CRM sync must be idempotent"). It also supports queued
+  failure simulation (`queue_failure(kind, external_id, error)` — §93's "essential for
+  resilience testing"), raising the given `ProviderError` once on the next matching call.
 - `colt_integrations.errors` — `ProviderError` and its subtypes, with
   `classify_http_status()` mapping a provider's HTTP status to the right one, mirroring
   `colt_ai.errors.classify()`.

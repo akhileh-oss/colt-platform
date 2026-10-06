@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 19 — Reply Intelligence: complete.**
+**Milestone 20 — CRM Integration: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -25,9 +25,9 @@ The API authenticates every protected route against real Keycloak-issued JWTs, r
 caller's organization and role from the database rather than trusting the token, enforces
 per-permission authorization, and scopes every tenant query through two independent layers — an
 application-layer repository base class and PostgreSQL Row-Level Security, now covering all
-eleven tenant-owned tables. `Organization`, `User`, `Company`, `Person`, `Signal`, `Evidence`,
-`Lead`, `Campaign`, `Message`, `Conversation`, `Opportunity` and `AuditLog` are real domain
-entities and database tables, with Alembic migrations and a seeded local dataset
+twelve tenant-owned tables. `Organization`, `User`, `Company`, `Person`, `Signal`, `Evidence`,
+`Lead`, `Campaign`, `Message`, `Conversation`, `Opportunity`, `CrmSyncRecord` and `AuditLog` are
+real domain entities and database tables, with Alembic migrations and a seeded local dataset
 (`make migrate && make seed`). A Temporal worker (`make worker`) runs real workflows against the
 local Temporal server, with a proven-durable example workflow — killing the worker mid-workflow
 and starting a fresh one still completes it correctly, from server-tracked state rather than
@@ -227,6 +227,28 @@ Anthropic key exists in this environment, so `ReplyIntelligenceAgent` itself is 
 hermetically only; the deterministic transition logic the acceptance criterion actually turns on
 is proven against real Postgres.
 
+Milestone 20 builds the CRM sync path (`CLAUDE.md` §30): `CrmSyncRecord` tracks, per
+`(organization_id, entity_type, entity_id, provider_name)`, how one Colt entity maps to one
+external CRM object — provider name, provider account ID, provider object ID, sync status, last
+synced at, last error — never a column on `Company`/`Person`/`Opportunity` themselves, the same
+polymorphic reasoning `Evidence` (Milestone 02) already establishes. CLAUDE.md names no specific
+real CRM vendor (unlike the search/enrichment providers named in §28.2), so — the same posture
+Milestone 12's `SignalTriggerSource` already documents — only the `CRMProvider` port and its
+`FakeCRMProvider` test double are built this milestone; it supports queued failure simulation
+(`success`/`rate_limit`/`timeout`/`500`/etc., CLAUDE.md §93) and upserts by `(kind, external_id)`,
+so a retry never creates a duplicate provider object. `sync_entity_to_crm_activity` is the one
+composition root that actually calls the provider — loading the real `Company`/`Person`/
+`Opportunity` row (or the caller's own fields, for a CRM `Task`, which Colt has no native entity
+for), syncing it, and recording the outcome through `RecordCrmSyncOutcome`, a deterministic,
+I/O-free upsert mirroring `RecordReplyClassification`'s role. `CrmReconciliationWorkflow` durably
+re-drives a batch of targets through that activity; Temporal's own retry policy handles "sync
+retries safely after recovery," and nothing else in the codebase calls into this workflow or its
+activity synchronously, so "CRM outage does not break core Colt workflows" holds structurally —
+both proven against real Postgres: a simulated outage syncing one `Company` does not stop
+`RecordEvidence` from completing normally in the same test, and two simulated failures followed
+by a successful retry against the same target leave exactly one `CrmSyncRecord` row, `SYNCED`,
+with exactly one provider-side object ever created.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -249,7 +271,8 @@ is proven against real Postgres.
 | 17        | Email subsystem                       | ✅ Complete (see caveat above) |
 | 18        | Outreach workflow                     | ✅ Complete (see caveat above) |
 | 19        | Reply intelligence                    | ✅ Complete (see caveat above) |
-| 20–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 20        | CRM integration                       | ✅ Complete                    |
+| 21–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

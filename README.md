@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 17 — Email Subsystem: complete.**
+**Milestone 18 — Outreach Workflow: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -192,6 +192,25 @@ a signed scheme, since a UUIDv4 already has no public mapping back to a person. 
   infrastructure, never the public internet, which is this milestone's literal acceptance
   criterion.
 
+Milestone 18 builds `LeadOutreachWorkflow` (`CLAUDE.md` §24.3), the first real product workflow
+wiring the research/personalization/messaging agents into one durable, restart-safe path: load
+state → validate qualification → research if stale/missing → personalize → draft → policy check
+→ approval wait → send → response wait → sequence continuation. Rather than wiring every REST
+route that can change an approval decision or a lead's conversation state to also push a Temporal
+signal into a running workflow, approval-wait and response-wait are both polling loops over the
+same Postgres rows `DecideMessageApproval` (Milestone 16) and `ProcessInboundEmail`/
+`UnsubscribeByToken` (Milestone 17) already write — `workflow.sleep` between polls is still fully
+durable, and this needs no changes to those already-shipped routes. The actual send reuses
+`send_email_activity` (Milestone 17) unchanged rather than reimplementing `SendMessage`'s
+policy-gated path a second time. No real Anthropic key exists in this environment (the caveat
+carried since Milestone 08), so the workflow's own hermetic tests (`tests/workflows`) substitute
+fake activities at the Temporal worker registration boundary, and its real-Postgres integration
+tests prove `load_outreach_state_activity`'s eligibility/research/next-step logic and
+`check_conversation_activity`'s reply/unsubscribe detection for real — "workflow survives
+restarts" is covered by Milestone 06's own literal proof of the same underlying Temporal
+mechanism this workflow's worker shares, since `LeadOutreachWorkflow` cannot reach a durable wait
+state without a real model call to draft a message first.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -211,7 +230,9 @@ a signed scheme, since a UUIDv4 already has no public mapping back to a person. 
 | 14        | Campaign engine                       | ✅ Complete                    |
 | 15        | Personalization + messaging           | ✅ Complete (see caveat above) |
 | 16        | Policy + approval system              | ✅ Complete                    |
-| 17–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 17        | Email subsystem                       | ✅ Complete (see caveat above) |
+| 18        | Outreach workflow                     | ✅ Complete (see caveat above) |
+| 19–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

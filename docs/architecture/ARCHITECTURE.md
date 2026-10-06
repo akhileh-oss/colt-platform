@@ -470,3 +470,61 @@ already-unsubscribed conversation never reopens it. `ReplyIntelligenceAgent` its
 hermetically only (`packages/python/colt-agents/tests/test_colt_agents_reply_intelligence_
 agent.py`) — no real Anthropic key exists in this environment, the same caveat carried since
 Milestone 08.
+
+## 15. CRM integration (Milestone 20)
+
+`CrmSyncRecord` (`colt_domain`, CLAUDE.md §30) is a new polymorphic entity, not a column on
+`Company`/`Person`/`Opportunity` — the same reasoning `Evidence` (Milestone 02) already
+establishes for a row that needs to reference any of several entity types generically. It
+tracks `(organization_id, entity_type, entity_id, provider_name)` — unique, so a second sync of
+the same entity against the same provider upserts the existing row rather than creating a
+duplicate mapping — plus the exact fields §30 names: provider account ID, provider object ID,
+`sync_status` (a milestone-defined closed enum, `PENDING`/`SYNCED`/`FAILED` — CLAUDE.md names the
+field without enumerating values, the same "the milestone building it makes the documented call"
+pattern `CampaignStatus` and `Urgency` already establish), last synced at, and last error.
+
+CLAUDE.md names `CRMProvider` as the adapter and contact/company/opportunity/task sync as
+separate Build items, but no specific real CRM vendor (unlike the search/enrichment providers
+§28.2 names) — the same situation `SignalTriggerSource` was in for Milestone 12. Only the port
+(`colt_integrations.crm.port.CRMProvider`) and its test double
+(`colt_integrations.crm.fake.FakeCRMProvider`) are built this milestone; `CRMSettings.provider`
+already defaults to `"fake"` (scaffolded ahead of this milestone in `colt_config`). Every sync
+call is keyed by `external_id` — the calling Colt entity's own id as a string — so CLAUDE.md
+§30's "CRM sync must be idempotent" holds by construction: `FakeCRMProvider` upserts by
+`(kind, external_id)`, never creating a second provider object for a retry of the same target.
+It also supports the "failure simulation" CLAUDE.md §93 calls essential for resilience testing —
+`queue_failure(kind, external_id, error)` makes the next sync call for that target raise instead
+of succeeding, once — which is what the acceptance test below drives directly.
+
+`RecordCrmSyncOutcome` (`colt_application`) is the deterministic, I/O-free half: given a sync
+attempt's result (a `provider_object_id` on success, an error message on failure), it upserts
+the `CrmSyncRecord` row by `(entity_type, entity_id, provider_name)` and marks it `SYNCED` or
+`FAILED` — the same "pure persistence logic, no I/O against the external system" role
+`RecordReplyClassification` (Milestone 19) plays for conversation state. `sync_entity_to_crm_
+activity` (`colt_workflows`) is the one composition root that actually calls the provider: it
+opens its own tenant-scoped session (the established `send_email_activity`/`research_company_
+activity` shape), loads the real `Company`/`Person`/`Opportunity` row to build the fields to
+sync (or uses the caller's own `fields` for a CRM `Task`, which Colt has no native entity for),
+calls the configured `CRMProvider`, and records the outcome through `RecordCrmSyncOutcome`
+before returning or re-raising — so the `CrmSyncRecord` row is the durable account of what
+happened independent of whether Temporal keeps retrying. A `ProviderError` is retried according
+to its own `.retryable` classification (§28.1), the same rule `send_email_activity` applies to
+the SMTP adapter.
+
+`CrmReconciliationWorkflow` is the "reconciliation workflow" Build item: it durably re-drives a
+batch of `CrmSyncTarget`s through `sync_entity_to_crm_activity`, one `RetryPolicy`-governed
+activity call per target, collecting each outcome rather than letting one target's exhausted
+retries abort the rest of the batch.
+
+Milestone 20's acceptance criterion — "CRM outage does not break core Colt workflows; sync
+retries safely after recovery" — is proven in two parts, against real Postgres in
+`tests/integration/test_crm_sync.py`. The first half is structural: nothing else in the codebase
+calls into `sync_entity_to_crm_activity` or `CrmReconciliationWorkflow` synchronously, so a CRM
+outage can only ever stall this one path, never a caller — proven literally by running
+`RecordEvidence` against the same company a simulated CRM outage just failed to sync, in the
+same test, and showing it completes normally. The second half is `sync_entity_to_crm_activity`
+called directly as a plain coroutine (it never touches `activity.info()`, the same legitimate
+shortcut `test_lead_outreach_activities.py` already documents): two queued provider failures
+followed by a successful call leave exactly one `CrmSyncRecord` row, `SYNCED`, with exactly one
+provider-side object ever created — the literal "retries safely after recovery, no duplicate
+side effects" (§96).

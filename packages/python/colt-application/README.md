@@ -128,5 +128,13 @@ never auto-sent — "suggested response generation" is a Build item, not a send 
 when the transition actually lands on `HUMAN_HANDOFF`, a second, distinct `handoff_created`
 event — §10.13 lists both as their own event types.
 
+`RecordCrmSyncOutcome` (CLAUDE.md §30, Milestone 20) upserts a `CrmSyncRecord` by
+`(entity_type, entity_id, provider_name)` from a sync attempt's result, mirroring
+`RecordReplyClassification`'s role: pure persistence logic, no I/O against the external CRM
+provider itself (that belongs to the Temporal activity, the composition root that owns the
+actual provider call). `OpportunityRepository` (a new port — Milestone 20 is the first caller
+that needs to read an `Opportunity` from the application layer) is a plain `Protocol` matching
+`SqlAlchemyOpportunityRepository`'s existing `add()`/`get()` shape.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

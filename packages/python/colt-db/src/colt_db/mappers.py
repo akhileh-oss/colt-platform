@@ -16,6 +16,7 @@ from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
 from colt_db.models.conversation import ConversationModel
 from colt_db.models.conversation_event import ConversationEventModel
+from colt_db.models.crm_sync_record import CrmSyncRecordModel
 from colt_db.models.evidence import EvidenceModel
 from colt_db.models.lead import LeadModel
 from colt_db.models.lead_score import LeadScoreModel
@@ -40,6 +41,7 @@ from colt_domain import (
     Conversation,
     ConversationEvent,
     ConversationState,
+    CrmSyncRecord,
     EmailStatus,
     Evidence,
     Lead,
@@ -56,6 +58,7 @@ from colt_domain import (
     Signal,
     SuppressionEntry,
     SuppressionReason,
+    SyncStatus,
     ToolCall,
     ToolCallStatus,
     User,
@@ -284,6 +287,23 @@ def conversation_event_to_domain(model: ConversationEventModel) -> ConversationE
         metadata=model.event_metadata,
         occurred_at=model.occurred_at,
         created_at=model.created_at,
+    )
+
+
+def crm_sync_record_to_domain(model: CrmSyncRecordModel) -> CrmSyncRecord:
+    return CrmSyncRecord(
+        id=model.id,
+        organization_id=model.organization_id,
+        entity_type=model.entity_type,
+        entity_id=model.entity_id,
+        provider_name=model.provider_name,
+        provider_account_id=model.provider_account_id,
+        provider_object_id=model.provider_object_id,
+        sync_status=SyncStatus(model.sync_status),
+        last_synced_at=model.last_synced_at,
+        last_error=model.last_error,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 

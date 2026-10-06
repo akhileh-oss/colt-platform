@@ -7,6 +7,7 @@ from colt_domain.campaign import Campaign, CampaignStatus
 from colt_domain.company import Company
 from colt_domain.conversation import Conversation, ConversationState
 from colt_domain.conversation_event import ConversationEvent
+from colt_domain.crm_sync_record import CrmSyncRecord, SyncStatus
 from colt_domain.evidence import Evidence, VerificationStatus
 from colt_domain.lead import Lead, LeadStatus
 from colt_domain.lead_score import LeadScore
@@ -42,6 +43,7 @@ __all__ = [
     "Conversation",
     "ConversationEvent",
     "ConversationState",
+    "CrmSyncRecord",
     "EmailStatus",
     "Evidence",
     "Lead",
@@ -59,6 +61,7 @@ __all__ = [
     "Signal",
     "SuppressionEntry",
     "SuppressionReason",
+    "SyncStatus",
     "ToolCall",
     "ToolCallStatus",
     "User",

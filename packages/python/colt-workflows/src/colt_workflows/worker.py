@@ -17,6 +17,7 @@ from temporalio.worker import Worker
 
 from colt_config import Settings, get_settings
 from colt_observability import configure_tracing, get_logger, instrument_sqlalchemy
+from colt_workflows.activities.crm_sync import sync_entity_to_crm_activity
 from colt_workflows.activities.example import greet
 from colt_workflows.activities.lead_outreach import (
     check_conversation_activity,
@@ -27,6 +28,7 @@ from colt_workflows.activities.lead_outreach import (
 from colt_workflows.activities.reply_intelligence import classify_reply_activity
 from colt_workflows.activities.send_email import send_email_activity
 from colt_workflows.activities.trace_check import count_organizations
+from colt_workflows.workflows.crm_reconciliation import CrmReconciliationWorkflow
 from colt_workflows.workflows.example import ExampleWorkflow
 from colt_workflows.workflows.lead_outreach import LeadOutreachWorkflow
 from colt_workflows.workflows.send_email import SendEmailWorkflow
@@ -41,6 +43,7 @@ WORKFLOWS: Sequence[type] = (
     TraceCheckWorkflow,
     SendEmailWorkflow,
     LeadOutreachWorkflow,
+    CrmReconciliationWorkflow,
 )
 ACTIVITIES: Sequence[Any] = (
     greet,
@@ -51,6 +54,7 @@ ACTIVITIES: Sequence[Any] = (
     draft_next_message_activity,
     check_conversation_activity,
     classify_reply_activity,
+    sync_entity_to_crm_activity,
 )
 
 

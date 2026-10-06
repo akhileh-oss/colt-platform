@@ -9,6 +9,7 @@ from colt_db.repositories.conversation_event_repository import (
     SqlAlchemyConversationEventRepository,
 )
 from colt_db.repositories.conversation_repository import SqlAlchemyConversationRepository
+from colt_db.repositories.crm_sync_record_repository import SqlAlchemyCrmSyncRecordRepository
 from colt_db.repositories.evidence_repository import SqlAlchemyEvidenceRepository
 from colt_db.repositories.lead_repository import SqlAlchemyLeadRepository
 from colt_db.repositories.lead_score_repository import SqlAlchemyLeadScoreRepository
@@ -30,6 +31,7 @@ __all__ = [
     "SqlAlchemyCompanyRepository",
     "SqlAlchemyConversationEventRepository",
     "SqlAlchemyConversationRepository",
+    "SqlAlchemyCrmSyncRecordRepository",
     "SqlAlchemyEvidenceRepository",
     "SqlAlchemyLeadRepository",
     "SqlAlchemyLeadScoreRepository",

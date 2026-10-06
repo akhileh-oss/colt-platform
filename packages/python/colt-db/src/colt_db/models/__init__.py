@@ -11,6 +11,7 @@ from colt_db.models.campaign import CampaignModel
 from colt_db.models.company import CompanyModel
 from colt_db.models.conversation import ConversationModel
 from colt_db.models.conversation_event import ConversationEventModel
+from colt_db.models.crm_sync_record import CrmSyncRecordModel
 from colt_db.models.evidence import EvidenceModel
 from colt_db.models.lead import LeadModel
 from colt_db.models.lead_score import LeadScoreModel
@@ -32,6 +33,7 @@ __all__ = [
     "CompanyModel",
     "ConversationEventModel",
     "ConversationModel",
+    "CrmSyncRecordModel",
     "EvidenceModel",
     "LeadModel",
     "LeadScoreModel",

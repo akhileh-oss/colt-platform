@@ -36,6 +36,7 @@ class Permission(StrEnum):
     MESSAGE_SEND = "message:send"
     OPPORTUNITY_READ = "opportunity:read"
     OPPORTUNITY_WRITE = "opportunity:write"
+    ANALYTICS_READ = "analytics:read"
     CRM_WRITE = "crm:write"
     AGENT_RUN = "agent:run"
     AGENT_CONFIGURE = "agent:configure"
@@ -59,6 +60,7 @@ DEFAULT_ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.MESSAGE_APPROVE,
             Permission.OPPORTUNITY_READ,
             Permission.OPPORTUNITY_WRITE,
+            Permission.ANALYTICS_READ,
             Permission.CRM_WRITE,
             Permission.AGENT_RUN,
         }
@@ -72,6 +74,7 @@ DEFAULT_ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.MESSAGE_APPROVE,
             Permission.OPPORTUNITY_READ,
             Permission.OPPORTUNITY_WRITE,
+            Permission.ANALYTICS_READ,
             Permission.CRM_WRITE,
         }
     ),
@@ -84,6 +87,7 @@ DEFAULT_ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.CAMPAIGN_LAUNCH,
             Permission.MESSAGE_APPROVE,
             Permission.OPPORTUNITY_READ,
+            Permission.ANALYTICS_READ,
         }
     ),
     Role.VIEWER: frozenset(
@@ -92,6 +96,7 @@ DEFAULT_ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.LEAD_READ,
             Permission.CAMPAIGN_READ,
             Permission.OPPORTUNITY_READ,
+            Permission.ANALYTICS_READ,
         }
     ),
     # A service identity is granted exactly what its workflow needs, never a human role

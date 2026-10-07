@@ -584,3 +584,73 @@ half the criterion actually turns on — two separate positive-conversation trig
 company producing exactly one `Opportunity` row, never two — is proven against real Postgres in
 `tests/integration/test_opportunity_engine.py`, alongside the full pipeline lifecycle to `WON`,
 a rejected illegal transition, and owner assignment.
+
+## 17. Analytics + learning loop (Milestone 22)
+
+CLAUDE.md §68 names eight reports (funnel, ICP performance, trigger performance, message
+performance, channel performance, agent cost, model performance, revenue outcomes) and one
+acceptance criterion — "dashboard can answer what segments, signals, personas, channels and
+message variants produce commercial outcomes" — without specifying a mechanism for any of them,
+the same posture `CampaignStatus`/`opportunity_state`/`revenue_attribution` already establish:
+the milestone building a report makes its own documented design call for what it reads and how
+it groups it.
+
+Every report is a pure function in `colt_application` (`summarize_funnel`,
+`summarize_icp_performance`, `summarize_trigger_performance`, `summarize_message_performance`,
+`summarize_channel_performance`, `summarize_agent_cost`, `summarize_model_performance`, and
+Milestone 21's own `summarize_revenue_by_source` reused unchanged) over a `list()` of already-
+stored domain rows — never a persisted column, never touching `colt_db` models directly, and
+always reproducible from the same rows (the same shape `colt_application.signals.rank_signal`
+already establishes). Each repository that an analytics report reads gained one new method,
+`list_all()` — every row for the caller's organization, RLS-scoped like every other method on
+that repository.
+
+Three of CLAUDE.md's named dimensions have no stored representation anywhere in this codebase,
+so this milestone makes three documented proxy calls:
+
+- **Segment** → `Company.industry`. `Campaign.icp_definition` is a per-campaign targeting dict,
+  not a label stored on a company, so `icp_performance.py` groups by `industry` (falling back to
+  `"unknown"`), joining each industry's companies/leads against real commercial outcomes
+  (qualified leads, closed-won revenue via `Opportunity.company_id`) — literally "what segments
+  ... produce commercial outcomes."
+- **Message variant** → `Message.prompt_version`, already recorded by `DraftMessage`
+  (Milestone 15).
+- **Persona** → `Person.seniority`, resolved through `Lead.person_id`. CLAUDE.md's acceptance
+  criterion names "personas" without a dedicated Build item for it, so `message_performance.py`
+  folds both the variant and persona dimensions into one module, grouped by
+  `(prompt_version, persona)`.
+
+`trigger_performance.py` groups by `Signal.signal_type` (an open vocabulary, §12.6) and
+correlates each type's ever-signaled companies against closed-won outcomes — "what ... signals
+... produce commercial outcomes," directly. `channel_performance.py` groups `Message` and
+`Conversation` rows by their shared free-text `channel` field, using `Conversation.state ==
+POSITIVE` as the literal commercial-outcome signal per channel. `agent_cost.py`/
+`model_performance.py` are the Build list's remaining, purely operational reports, grouped by
+`AgentRun.agent_name`/`AgentRun.model_name` respectively — the cost/success-rate comparison a
+model or prompt change needs before and after rollout (CLAUDE.md §82, §14.2).
+
+**A Protocol-widening mistake, corrected before it shipped.** The first attempt added
+`list_all()` directly to the existing, widely-depended-on `LeadRepository`/`CompanyRepository`/
+etc. ports in `colt_application/ports/`. Even though `Protocol` conformance is structural, every
+other use case's `Fake*Repository` test double across the codebase stopped satisfying its own
+constructor's `Protocol` type the moment the `Protocol` gained a method the fake didn't have —
+breaking mypy in over twenty unrelated test files. The fix: a new, narrow, standalone module,
+`colt_application/ports/analytics.py`, defining one `list_all()`-only reader `Protocol` per
+entity (`LeadAnalyticsReader`, `CompanyAnalyticsReader`, etc.) that the same already-extended
+concrete `SqlAlchemy*Repository` classes satisfy structurally, without the existing ports ever
+changing. The lesson generalizes: never widen an existing, widely-used `Protocol` for one new,
+narrow need — define a new `Protocol` instead.
+
+The `/api/v1/analytics` REST surface (one `ANALYTICS_READ`-gated route per report, a new
+`colt_domain.roles.Permission` value) and the dashboard (`apps/web`) follow the established
+`campaigns.py`/`opportunities.py` shape — constructing the repositories a report needs, reading
+every row with `list_all()`, and handing the lists straight to the matching `summarize_*`
+function.
+
+Every `summarize_*` function has its own hermetic unit tests covering grouping, fallback
+("unknown" segment/variant/persona), and sorting. A real-Postgres integration test
+(`tests/integration/test_analytics.py`) seeds one company that wins — its own industry, signal
+type, message variant/persona, and channel — against a second company that never converts, and
+proves every report surfaces the winner's segment/signal/variant/persona/channel with a nonzero
+commercial-outcome metric while the non-converting company's dimension stays at zero: the
+acceptance criterion, literally exercised against real rows.

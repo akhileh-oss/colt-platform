@@ -62,5 +62,13 @@ more than one somehow exists), `list_all()` (the pipeline dashboard's read model
 `update_stage()`/`assign_owner()`/`update_value()` — the three real mutations; `.add()` gained
 the new column as a keyword argument.
 
+Milestone 22 (CLAUDE.md §68) adds no new table or column — the Analytics + Learning Loop reads
+entirely from rows other milestones already persist. `SqlAlchemyLeadRepository`,
+`SqlAlchemyCompanyRepository`, `SqlAlchemyPersonRepository`, `SqlAlchemySignalRepository`,
+`SqlAlchemyMessageRepository`, and `SqlAlchemyConversationRepository` each gained `list_all()`
+(the same RLS-scoped, no-filter read `SqlAlchemyCampaignRepository`/`SqlAlchemyOpportunityRepository`
+already have), so every analytics report can read a full, tenant-scoped set of rows for its
+`colt_application.summarize_*` function.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

@@ -46,6 +46,13 @@ class SqlAlchemyConversationRepository(TenantScopedRepository):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return conversation_to_domain(model) if model is not None else None
 
+    async def list_all(self) -> list[Conversation]:
+        """Every conversation in this organization — the channel-performance analytics read
+        model (Milestone 22) groups over this by `channel`/`state`."""
+        stmt = self._select_scoped(ConversationModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [conversation_to_domain(model) for model in models]
+
     async def touch_last_activity(self, conversation_id: UUID, *, at: datetime) -> Conversation:
         stmt = self._select_scoped(ConversationModel).where(ConversationModel.id == conversation_id)
         model = (await self._session.execute(stmt)).scalar_one()

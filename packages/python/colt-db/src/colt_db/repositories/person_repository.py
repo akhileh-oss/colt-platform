@@ -71,6 +71,13 @@ class SqlAlchemyPersonRepository(TenantScopedRepository):
         models = (await self._session.execute(stmt)).scalars().all()
         return [person_to_domain(model) for model in models]
 
+    async def list_all(self) -> list[Person]:
+        """Every person in this organization — the message-performance analytics read model
+        (Milestone 22) resolves a message's recipient persona (`seniority`) over this."""
+        stmt = self._select_scoped(PersonModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [person_to_domain(model) for model in models]
+
     async def find_by_provider_id(self, provider: str, provider_id: str) -> Person | None:
         """Identity resolution's top-priority layer (`CLAUDE.md` §22) — see
         `SqlAlchemyCompanyRepository.find_by_provider_id`."""

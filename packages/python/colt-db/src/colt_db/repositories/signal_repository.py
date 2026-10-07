@@ -51,3 +51,10 @@ class SqlAlchemySignalRepository(TenantScopedRepository):
         stmt = self._select_scoped(SignalModel).where(SignalModel.id == signal_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return signal_to_domain(model) if model is not None else None
+
+    async def list_all(self) -> list[Signal]:
+        """Every signal in this organization — the trigger-performance analytics read model
+        (Milestone 22) groups over this by `signal_type`."""
+        stmt = self._select_scoped(SignalModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [signal_to_domain(model) for model in models]

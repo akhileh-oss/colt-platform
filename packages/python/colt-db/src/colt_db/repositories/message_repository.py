@@ -143,6 +143,13 @@ class SqlAlchemyMessageRepository(TenantScopedRepository):
         await self._session.refresh(model)
         return message_to_domain(model)
 
+    async def list_all(self) -> list[Message]:
+        """Every message in this organization — the message/channel-performance analytics read
+        models (Milestone 22) group over this across campaigns, not within one."""
+        stmt = self._select_scoped(MessageModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [message_to_domain(model) for model in models]
+
     async def count_sent_since(self, campaign_id: UUID, since: datetime) -> int:
         """How many messages this campaign has already sent since `since` — the fact
         `evaluate_outbound_send`'s `rate_limit_ok` check is computed from (§17.1 check 8)."""

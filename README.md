@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 25 — Production Infrastructure: complete.**
+**Milestone 26 — CI/CD + Release Engineering: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -382,6 +382,53 @@ valid) — proving every module's syntax, type, and reference graph is internall
 static half of "reproducible," without the real-infrastructure half this environment cannot
 supply.
 
+Milestone 26 builds CI/CD (`CLAUDE.md` §68) as a GitHub Actions pipeline (`.github/workflows/
+ci.yml`) running every stage the Build list names, each its own job: `install-lint-typecheck`,
+`security` (`make security`), `unit-tests`, `integration-and-workflow-tests` (`make dev` + `make
+migrate` + `test-integration`/`test-workflows`/`test-security` — the identical commands a
+contributor runs locally, not a parallel GitHub Actions `services:` block that could silently
+drift from them), `e2e-tests` (Playwright's own `webServer` config starts the API and web app
+itself), `migration-validation` (`alembic check` against a fresh database — fails if a `colt_db`
+model changed without a matching migration), `build-images` (new `apps/api/Dockerfile`,
+`apps/web/Dockerfile`, `infrastructure/docker/worker/Dockerfile`, pushed to ECR via AWS OIDC —
+no long-lived AWS key stored in this repository), `deploy-staging` (`terraform apply` against
+the Milestone 25 staging environment), and `smoke-test-staging` (an unauthenticated `GET
+/api/v1/meta` through the ALB's `/api/*` route, and `GET /` through its `/*` route — proving
+both the `api` and `web` services are actually reachable, not just that ECS reports them
+healthy). `build-images`/`deploy-staging`/`smoke-test-staging` run only on a push to `main`; a
+draft PR's own CI never touches a real image registry or staging itself.
+
+**Production deployment requires an explicit release step** (`CLAUDE.md` §56): a second
+workflow, `.github/workflows/deploy-production.yml`, triggers only on `workflow_dispatch` — a
+human choosing an already-built, already-staging-soaked image tag from the Actions tab, never a
+push or a schedule — and its deploy job declares `environment: production`, gating it behind
+this repository's own "production" GitHub Environment protection rule. That rule (a required
+reviewer) is configured in the repository's Settings, not in a workflow file Terraform or this
+PR can create — documented here as a one-time setup step a repo admin must still perform, rather
+than silently assumed already in place.
+
+Building the Dockerfiles surfaced one real finding, fixed in this milestone rather than carried
+forward: `migration-validation`'s own new `alembic check` step caught genuine schema drift
+predating the Milestone 05 naming-convention change — the `campaigns` table's status check
+constraint was named `valid_campaign_status` in its original migration but compiles to
+`ck_campaigns_valid_campaign_status` under `colt_db.base`'s naming convention today, and two
+JSON columns (`conversation_events.event_metadata`, `sequence_steps.conditions`) were migrated
+as generic `JSON` though their models have declared `JSONB` for some time. A new migration
+(`ee0e282d11ae`) reconciles both, verified upgrade-then-check-then-downgrade-then-upgrade
+against a real, disposable Postgres database.
+
+**What could not be verified here, and why**: this sandbox's shared network egress is
+rate-limited by Docker Hub (`429 Too Many Requests` resolving `python:3.12-slim`/every
+`docker.io` base image), so an actual containerized `docker build` of any of the three new
+Dockerfiles was `NOT RUN`. Every build step's own underlying command was still verified for
+real, outside a container: `uv sync --frozen --no-dev --no-install-project` and `uv sync
+--frozen --no-dev` (api), `uv sync --frozen --no-dev --package colt-workflows` (worker), and
+`pnpm --filter @colt/web build` (web, confirming `next.config.ts`'s new `output: "standalone"`
+produces exactly the `apps/web/.next/standalone/apps/web/server.js` path the Dockerfile's
+runtime stage expects) all succeed. GitHub Actions' own runners pull from Docker Hub without
+this sandbox's shared-IP throttling, so the real containerized build is expected to succeed
+there; it is reported as unverified here rather than assumed passing.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -410,7 +457,8 @@ supply.
 | 23        | AI evaluation system                  | ✅ Complete                    |
 | 24        | Security hardening                    | ✅ Complete                    |
 | 25        | Production infrastructure             | ✅ Complete (see caveat above) |
-| 26–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 26        | CI/CD + release engineering           | ✅ Complete (see caveat above) |
+| 27–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

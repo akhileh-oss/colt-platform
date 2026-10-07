@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // `make lint` / `pnpm lint` step, covering the whole workspace with one shared config,
   // rather than through a Next-specific build-time toggle.
   typescript: { ignoreBuildErrors: false },
+  // Milestone 26: the production Docker image copies only `.next/standalone` plus `public`/
+  // `.next/static` — never the full pnpm workspace `node_modules`, whose symlinks don't survive
+  // a Docker `COPY` the way a self-contained standalone bundle does.
+  output: "standalone",
 };
 
 export default nextConfig;

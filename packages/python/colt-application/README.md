@@ -178,5 +178,14 @@ existing, widely-depended-on `Protocol` for one new, narrow need — define a ne
 `Protocol` instead**, the same concrete class satisfying both without either ever touching the
 other.
 
+`ValidateCampaign`, `PauseCampaign`, and `ResumeCampaign` (CLAUDE.md §48, Milestone 24) now each
+take an `AuditLogRepository` and an `actor_id: UUID`, writing one `AuditLog` row
+(`campaign_launched`/`campaign_paused`/`campaign_resumed`) after a successful state transition,
+closing the two campaign-lifecycle audit gaps a security audit found still missing (message
+approval, message send, and suppression were already wired). This codebase has no use case
+separately named "launch" — a `DRAFT` campaign's `ValidateCampaign` call *is* its launch, the
+only way a campaign ever first reaches `ACTIVE` — and `ResumeCampaign` is audited the same way,
+since §48 treats resuming as the same kind of action as launching.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

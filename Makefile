@@ -91,7 +91,7 @@ typecheck: ## Type-check Python (mypy strict) and TypeScript
 test: test-unit ## Run the default test suite
 
 test-unit: ## Run unit tests (Python + TypeScript)
-	$(UV) run pytest -m "not integration and not e2e and not workflows and not evals"
+	$(UV) run pytest -m "not integration and not e2e and not workflows and not evals and not security"
 	$(PNPM) run test
 
 test-integration: ## Run integration tests (requires `make dev` + `make migrate`)
@@ -102,6 +102,9 @@ test-e2e: ## Run end-to-end browser tests (starts the API and web server itself)
 
 test-workflows: ## Run Temporal workflow tests (in-process time-skipping environment)
 	$(UV) run pytest -m workflows
+
+test-security: ## Run the security regression suite (requires `make dev` + `make migrate`)
+	$(UV) run pytest -m security
 
 eval: ## Run AI evaluation suites (golden datasets, regression/structured-output/evidence-grounding checks)
 	$(UV) run pytest -m evals

@@ -17,7 +17,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CampaignStatus(StrEnum):
@@ -35,7 +35,10 @@ class Campaign(BaseModel):
 
     id: UUID
     organization_id: UUID
-    name: str
+    #: `max_length` (CLAUDE.md §40's "input validation"/"request size limits", Milestone 24),
+    #: matching `CampaignModel.name`'s own `String(300)` column exactly — the domain layer must
+    #: never claim a looser bound than the database actually enforces.
+    name: str = Field(max_length=300)
     status: CampaignStatus = CampaignStatus.DRAFT
     objective: str | None = None
     icp_definition: dict[str, Any] = {}

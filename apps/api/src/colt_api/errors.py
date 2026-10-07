@@ -125,6 +125,11 @@ class PolicyDeniedError(ColtError):
         super().__init__(ErrorCode.POLICY_DENIED, message, **kwargs)
 
 
+class RateLimitedError(ColtError):
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        super().__init__(ErrorCode.RATE_LIMITED, message, **kwargs)
+
+
 class AuthenticationError(ColtError):
     def __init__(self, message: str, **kwargs: Any) -> None:
         super().__init__(ErrorCode.AUTHENTICATION_ERROR, message, **kwargs)

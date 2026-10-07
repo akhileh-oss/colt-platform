@@ -119,7 +119,10 @@ async def test_draft_approve_send_and_inbound_reply_round_trip_through_real_mail
             schedule={"timezone": "UTC"},
             limits={"max_sends_per_day": 50},
         )
-        campaign = await ValidateCampaign(campaigns)(campaign.id, now=NOW)
+        audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+        campaign = await ValidateCampaign(campaigns, audit_logs)(
+            campaign.id, actor_id=uuid.uuid4(), now=NOW
+        )
 
         evidence_repo = await SqlAlchemyEvidenceRepository.create(session, org_a)
         evidence = await RecordEvidence(evidence_repo)(

@@ -265,8 +265,11 @@ async def validate_campaign(
     campaign_id: UUID, principal: LaunchPrincipalDep, session: DbSessionDep
 ) -> CampaignResponse:
     repo = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    audit_logs = SqlAlchemyAuditLogRepository(session, principal.organization.id)
     try:
-        campaign = await ValidateCampaign(repo)(campaign_id, now=datetime.now(UTC))
+        campaign = await ValidateCampaign(repo, audit_logs)(
+            campaign_id, actor_id=principal.user.id, now=datetime.now(UTC)
+        )
     except NotFoundError as exc:
         raise ApiNotFoundError(str(exc)) from exc
     except CampaignValidationError as exc:
@@ -286,8 +289,11 @@ async def pause_campaign(
     campaign_id: UUID, principal: LaunchPrincipalDep, session: DbSessionDep
 ) -> CampaignResponse:
     repo = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    audit_logs = SqlAlchemyAuditLogRepository(session, principal.organization.id)
     try:
-        campaign = await PauseCampaign(repo)(campaign_id, now=datetime.now(UTC))
+        campaign = await PauseCampaign(repo, audit_logs)(
+            campaign_id, actor_id=principal.user.id, now=datetime.now(UTC)
+        )
     except NotFoundError as exc:
         raise ApiNotFoundError(str(exc)) from exc
     except InvalidCampaignTransitionError as exc:
@@ -348,8 +354,11 @@ async def resume_campaign(
     campaign_id: UUID, principal: LaunchPrincipalDep, session: DbSessionDep
 ) -> CampaignResponse:
     repo = await SqlAlchemyCampaignRepository.create(session, principal.organization.id)
+    audit_logs = SqlAlchemyAuditLogRepository(session, principal.organization.id)
     try:
-        campaign = await ResumeCampaign(repo)(campaign_id, now=datetime.now(UTC))
+        campaign = await ResumeCampaign(repo, audit_logs)(
+            campaign_id, actor_id=principal.user.id, now=datetime.now(UTC)
+        )
     except NotFoundError as exc:
         raise ApiNotFoundError(str(exc)) from exc
     except InvalidCampaignTransitionError as exc:

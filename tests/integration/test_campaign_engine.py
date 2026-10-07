@@ -15,8 +15,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import text
 
 from colt_application.errors import (
     CampaignValidationError,
@@ -31,6 +33,7 @@ from colt_application.use_cases.list_sequence_steps import ListSequenceSteps
 from colt_application.use_cases.pause_campaign import PauseCampaign
 from colt_application.use_cases.resume_campaign import ResumeCampaign
 from colt_application.use_cases.validate_campaign import ValidateCampaign
+from colt_db.repositories.audit_log_repository import SqlAlchemyAuditLogRepository
 from colt_db.repositories.campaign_repository import SqlAlchemyCampaignRepository
 from colt_db.repositories.sequence_step_repository import SqlAlchemySequenceStepRepository
 from colt_domain import CampaignStatus
@@ -75,7 +78,8 @@ async def test_a_campaign_can_be_created_validated_paused_resumed_and_inspected(
         session = await open_app_session()
         async with session, session.begin():
             repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-            await ValidateCampaign(repo)(incomplete.id, now=NOW)
+            audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+            await ValidateCampaign(repo, audit_logs)(incomplete.id, actor_id=uuid4(), now=NOW)
     assert len(exc_info.value.issues) == 4
     session = await open_app_session()
     async with session, session.begin():
@@ -83,11 +87,17 @@ async def test_a_campaign_can_be_created_validated_paused_resumed_and_inspected(
         still_draft = await GetCampaign(repo)(incomplete.id)
     assert still_draft.status == CampaignStatus.DRAFT
 
-    # Validated: the fully-configured campaign activates.
+    # Validated: the fully-configured campaign activates, and the launch is audited
+    # (CLAUDE.md §48, Milestone 24 — this codebase's "launch" is a DRAFT campaign's first
+    # validation, the only way a campaign ever reaches ACTIVE for the first time).
+    launched_by = uuid4()
     session = await open_app_session()
     async with session, session.begin():
         repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-        activated = await ValidateCampaign(repo)(campaign.id, now=NOW)
+        audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+        activated = await ValidateCampaign(repo, audit_logs)(
+            campaign.id, actor_id=launched_by, now=NOW
+        )
     assert activated.status == CampaignStatus.ACTIVE
 
     session = await open_app_session()
@@ -96,11 +106,13 @@ async def test_a_campaign_can_be_created_validated_paused_resumed_and_inspected(
         persisted = await GetCampaign(repo)(campaign.id)
     assert persisted.status == CampaignStatus.ACTIVE
 
-    # Paused.
+    # Paused, and the pause is audited the same way the launch was.
+    paused_by = uuid4()
     session = await open_app_session()
     async with session, session.begin():
         repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-        paused = await PauseCampaign(repo)(campaign.id, now=NOW)
+        audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+        paused = await PauseCampaign(repo, audit_logs)(campaign.id, actor_id=paused_by, now=NOW)
     assert paused.status == CampaignStatus.PAUSED
 
     session = await open_app_session()
@@ -114,18 +126,23 @@ async def test_a_campaign_can_be_created_validated_paused_resumed_and_inspected(
         session = await open_app_session()
         async with session, session.begin():
             repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-            await PauseCampaign(repo)(campaign.id, now=NOW)
+            audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+            await PauseCampaign(repo, audit_logs)(campaign.id, actor_id=uuid4(), now=NOW)
     with pytest.raises(InvalidCampaignTransitionError):
         session = await open_app_session()
         async with session, session.begin():
             repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-            await ValidateCampaign(repo)(campaign.id, now=NOW)
+            audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+            await ValidateCampaign(repo, audit_logs)(campaign.id, actor_id=uuid4(), now=NOW)
 
-    # Resumed.
+    # Resumed, and the resume is audited too (CLAUDE.md §48 treats resuming a paused campaign
+    # as the same kind of "launch" action re-validating a draft is).
+    resumed_by = uuid4()
     session = await open_app_session()
     async with session, session.begin():
         repo = await SqlAlchemyCampaignRepository.create(session, org_a)
-        resumed = await ResumeCampaign(repo)(campaign.id, now=NOW)
+        audit_logs = SqlAlchemyAuditLogRepository(session, org_a)
+        resumed = await ResumeCampaign(repo, audit_logs)(campaign.id, actor_id=resumed_by, now=NOW)
     assert resumed.status == CampaignStatus.ACTIVE
 
     session = await open_app_session()
@@ -140,6 +157,28 @@ async def test_a_campaign_can_be_created_validated_paused_resumed_and_inspected(
         repo = await SqlAlchemyCampaignRepository.create(session, org_a)
         all_campaigns = await ListCampaigns(repo)()
     assert {c.id for c in all_campaigns} == {campaign.id, incomplete.id}
+
+    # Audit completeness (CLAUDE.md §48, Milestone 24): the launch, pause, and resume each left
+    # exactly one real AuditLog row, in order, each attributed to the actor that performed it —
+    # never silently skipped, and never attributed to the wrong user.
+    session = await open_app_session()
+    async with session, session.begin():
+        await SqlAlchemyAuditLogRepository.create(session, org_a)
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT action, actor_id FROM audit_logs "
+                    "WHERE entity_type = 'Campaign' AND entity_id = :campaign_id "
+                    "ORDER BY created_at"
+                ),
+                {"campaign_id": campaign.id},
+            )
+        ).all()
+    assert [(row.action, row.actor_id) for row in rows] == [
+        ("campaign_launched", launched_by),
+        ("campaign_paused", paused_by),
+        ("campaign_resumed", resumed_by),
+    ]
 
 
 @pytest.mark.asyncio

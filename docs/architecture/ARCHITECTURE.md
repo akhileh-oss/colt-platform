@@ -726,3 +726,106 @@ into every agent-dependent milestone since):
 criterion, "prompt/model changes can be evaluated before release," exercised literally: every
 comparison and regression check above runs against real `AgentRuntime` executions, real cost
 pricing, and a real stored baseline, never a synthetic stand-in for the mechanism it proves.
+
+---
+
+## 19. Security hardening (Milestone 24)
+
+CLAUDE.md §40 gives a flat "mandatory" list spanning every layer of the stack. Most of it
+pre-dates this milestone — SSRF protection (§33, Milestone 10), tenant isolation on most tables
+(§9.7/§27, every milestone since Milestone 05), and input validation at the API boundary all
+already existed. Milestone 24's job was narrower: a focused audit of the gap between what §40
+names and what the codebase actually does, closing exactly what the audit found missing, and
+documenting — rather than silently carrying — what it found but judged out of scope.
+
+**Rate limiting (§37, §79).** `apps/api/src/colt_api/rate_limit.py` is new: `RateLimiter` is a
+fixed-window counter over an injected `redis.asyncio.Redis` client (`INCR` a key scoped to the
+caller-chosen bucket plus the current window index; `EXPIRE` only on the key's first increment,
+so a steady stream of calls never resets its own TTL; reject once the count exceeds the
+configured limit). CLAUDE.md names rate limiting as a Build item without specifying an
+algorithm — a fixed window, rather than a sliding window or token bucket, is this milestone's own
+documented, minimal choice, the "the milestone building it makes the documented call" pattern
+this codebase already establishes elsewhere.
+
+`rate_limit(bucket_name, key_fn, *, limit, window_seconds=60)` is a `Depends(...)` factory any
+route can adopt. It is wired onto exactly one route today: the deliberately unauthenticated
+`POST /unsubscribe/{organization_id}/{message_id}` webhook, keyed by that
+`(organization_id, message_id)` pair rather than client IP — a brute-force attempt against one
+unsubscribe token looks the same regardless of the caller's network path, and keying by the
+token itself needs no IP-extraction logic. Of §79's five rate-limited categories
+(authentication-sensitive, AI-expensive, search/research, outbound-action, webhook), this is the
+only one with a direct, synchronous HTTP route in this codebase: authentication is delegated
+entirely to Keycloak (no local login endpoint), AI/search operations run inside Temporal
+workflows/activities rather than synchronously inside an HTTP handler (§2.5's "workflows own
+sequencing"), and outbound-action already has its own, different throttle
+(`colt_policy.outbound`'s `rate_limit_ok`, per-campaign, Milestones 16-18). A broad IP-keyed
+middleware across every route was considered and rejected: it would key many unrelated tests'
+`TestClient` requests by the same fake client IP with no Redis flush between test files,
+letting cumulative counts from one test file start failing unrelated ones later in a run.
+
+**Audit completeness (§48).** The audit found three of §48's five named campaign-lifecycle
+actions already wired (message approval, message send, suppression) and two missing: campaign
+launch and pause. `ValidateCampaign`, `PauseCampaign`, and `ResumeCampaign`
+(`packages/python/colt-application/src/colt_application/use_cases/`) now each take an
+`AuditLogRepository` and an `actor_id`, writing one `AuditLog` row
+(`campaign_launched`/`campaign_paused`/`campaign_resumed`) after a successful transition. This
+codebase has no use case separately named "launch" — a `DRAFT` campaign's `ValidateCampaign` call
+*is* its launch, the only way a campaign ever first reaches `ACTIVE` — and `ResumeCampaign` is
+audited the same way `ValidateCampaign` is, since §48 treats resuming as the same kind of action
+as launching. `require_permission` (`apps/api/src/colt_api/dependencies.py`) deliberately stays
+database-free: a permission denial is already captured by the existing structured-logging error
+handler (`errors.py`'s `_handle_colt_error` logs every `ColtError`, `PolicyDeniedError` included,
+with its error code), which satisfies §48's hedged "log security events where appropriate"
+without forcing a hard DB dependency onto what has been a pure, hermetically-testable
+cross-cutting check since Milestone 04. "Login" has no discrete event in this architecture to
+audit — authentication is a stateless JWT verified per-request against Keycloak, which owns the
+login event itself.
+
+**Input limits (§40).** `Campaign.name`, `Company.name`, and `Person.full_name`
+(`packages/python/colt-domain/src/colt_domain/`) now reject a value past 300 characters, and
+`Message.subject` past 500 — each matching its backing `colt_db` model's own `String(N)` column
+width exactly, so the domain layer never claims a looser bound than PostgreSQL actually enforces.
+`Company.description` and `Message.body` back onto unbounded `Text` columns with no DB-side cap
+to match, so they get their own deliberately tighter, documented application-level caps instead
+(5,000 and 100,000 characters respectively) — generous enough for any real use, never unbounded.
+
+**`tests/security/` (new).** A dedicated regression suite (`make test-security`, `pytest -m
+security`, requires `make dev` + `make migrate`), distinct from the pre-existing `make security`
+target (dependency/secret scanning only). Its fixtures needed the same real-RLS-enforcing
+Postgres connection `tests/integration/`'s own fixtures already provide, so this milestone moved
+`app_engine`/`superuser_engine`/`open_app_session`/`two_organizations`/the table-cleanup
+autouse fixtures from `tests/integration/conftest.py` up to the root `tests/conftest.py` — a
+sibling directory's `conftest.py` is not on another sibling's fixture-resolution path, only a
+shared ancestor's is. Each file is a sentinel over an existing mechanism's core invariant, not a
+duplicate of the exhaustive feature-level suite that already covers it case by case:
+
+- `test_ssrf.py` — the SSRF guard (`colt_integrations.fetch.http._resolve_and_check`) blocks
+  every disallowed address class, directly from `tests/security/`'s own vantage point. Documents,
+  rather than closes, the one known residual gap: a DNS-rebinding window between the guard's own
+  resolution and the HTTP client's independent connection-time resolution. Closing it needs a
+  custom `httpx` transport that pins the checked IP into the real connection — real work for a
+  real gain, but disproportionate given `ResearchAgent` is the guard's only caller, fetching URLs
+  a search provider already returned, never arbitrary user-supplied ones.
+- `test_tenant_isolation_gaps.py` — closes four specific coverage gaps the audit found: no
+  existing test asserted a real cross-tenant deny, via actual Postgres RLS, for `approvals`,
+  `lead_scores`, `conversation_events`, or `crm_sync_records`. Same proof shape as the existing
+  `test_domain_tables.py` tests: seed a row under one organization, open a fresh RLS-scoped
+  session for another, assert a real `SELECT count(*)` sees zero rows.
+- `test_authorization_matrix.py` — the full `(Role, Permission)` matrix, exercised through the
+  real FastAPI dependency chain (`require_permission`) rather than read back from the table that
+  defines it: for every pair, a role with the permission is let through and a role without it
+  gets a real `403 POLICY_DENIED`. `apps/api/tests/test_colt_api_auth.py` already proves the
+  wiring with one example; this is the literal contract `DEFAULT_ROLE_PERMISSIONS` claims to be.
+- `test_security_baseline.py` — every response carries the full `SECURITY_HEADERS` set, and
+  every credential CLAUDE.md's §40 "Never" list names (bearer tokens, plaintext passwords, OAuth
+  refresh tokens) is still caught by `colt_observability.redaction`'s redactor today.
+- `test_rate_limiting.py` — the same `RateLimiter` mechanism `apps/api/tests/
+  test_colt_api_rate_limit.py` proves against a hermetic fake, proven again against a real Redis
+  client — real `INCR`/`EXPIRE` semantics a fake could get subtly wrong (atomicity, TTL
+  behaviour, key independence).
+
+**Two findings, investigated and deliberately out of scope.** Secure file-type/size validation
+(§40) is not applicable: no upload or file-serving endpoint exists anywhere in `apps/api` today,
+so there is nothing for such a check to guard. CORS/CSRF (§40) were already covered by the
+existing bearer-token-only authentication model (§26) — there are no cookie-based sessions for
+CSRF to target, and CORS is unchanged from Milestone 02's foundation.

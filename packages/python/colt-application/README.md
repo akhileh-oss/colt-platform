@@ -183,7 +183,7 @@ take an `AuditLogRepository` and an `actor_id: UUID`, writing one `AuditLog` row
 (`campaign_launched`/`campaign_paused`/`campaign_resumed`) after a successful state transition,
 closing the two campaign-lifecycle audit gaps a security audit found still missing (message
 approval, message send, and suppression were already wired). This codebase has no use case
-separately named "launch" — a `DRAFT` campaign's `ValidateCampaign` call *is* its launch, the
+separately named "launch" — a `DRAFT` campaign's `ValidateCampaign` call _is_ its launch, the
 only way a campaign ever first reaches `ACTIVE` — and `ResumeCampaign` is audited the same way,
 since §48 treats resuming as the same kind of action as launching.
 

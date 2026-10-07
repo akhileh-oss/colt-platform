@@ -770,7 +770,7 @@ launch and pause. `ValidateCampaign`, `PauseCampaign`, and `ResumeCampaign`
 `AuditLogRepository` and an `actor_id`, writing one `AuditLog` row
 (`campaign_launched`/`campaign_paused`/`campaign_resumed`) after a successful transition. This
 codebase has no use case separately named "launch" — a `DRAFT` campaign's `ValidateCampaign` call
-*is* its launch, the only way a campaign ever first reaches `ACTIVE` — and `ResumeCampaign` is
+_is_ its launch, the only way a campaign ever first reaches `ACTIVE` — and `ResumeCampaign` is
 audited the same way `ValidateCampaign` is, since §48 treats resuming as the same kind of action
 as launching. `require_permission` (`apps/api/src/colt_api/dependencies.py`) deliberately stays
 database-free: a permission denial is already captured by the existing structured-logging error
@@ -820,7 +820,7 @@ duplicate of the exhaustive feature-level suite that already covers it case by c
   every credential CLAUDE.md's §40 "Never" list names (bearer tokens, plaintext passwords, OAuth
   refresh tokens) is still caught by `colt_observability.redaction`'s redactor today.
 - `test_rate_limiting.py` — the same `RateLimiter` mechanism `apps/api/tests/
-  test_colt_api_rate_limit.py` proves against a hermetic fake, proven again against a real Redis
+test_colt_api_rate_limit.py` proves against a hermetic fake, proven again against a real Redis
   client — real `INCR`/`EXPIRE` semantics a fake could get subtly wrong (atomicity, TTL
   behaviour, key independence).
 

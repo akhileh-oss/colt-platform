@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 22 — Analytics + Learning Loop: complete.**
+**Milestone 23 — AI Evaluation System: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -298,6 +298,31 @@ industry, signal type, message variant/persona, and channel) against a non-conve
 proves each report surfaces the winner's commercial outcome while the other stays at zero — the
 acceptance criterion, literally exercised.
 
+Milestone 23 builds the AI Evaluation System (`CLAUDE.md` §45.5, §46, §68): golden datasets,
+regression evaluations, structured-output validation, evidence-grounding tests, prompt
+comparison reports, model comparison reports, and cost/latency measurements, all answering the
+milestone's own acceptance criterion — "prompt/model changes can be evaluated before release."
+The reusable mechanism — `EvalReport`, regression comparison against a stored baseline, prompt/
+model comparison, evidence-grounding checks — lives in a new `colt_agents.evals` module;
+`tests/evals/` holds the actual golden suites that drive it against three agents through the
+real `AgentRuntime`, hermetically: `ScoringAgent` (structured-output validation — a response
+missing a required field must be caught as a scored failure, never silently accepted; scoring
+consistency; a regression gate against a stored `tests/evals/baselines/scoring_agent.json`),
+`ResearchAgent` (evidence grounding — a `FACT` claim citing a fabricated evidence_id that
+`record_evidence` never actually recorded is caught as a hallucinated citation, a failure mode
+`DossierClaim`'s own schema validator cannot catch on its own), and `ReplyIntelligenceAgent`
+(classification accuracy, including the deterministic `HIGH`-urgency override that always wins
+over the model's own recommendation). Cost and latency are never a new measurement bolted onto
+these suites — they reuse Milestone 22's own `summarize_agent_cost`/`summarize_model_performance`
+directly over the real `AgentRun` rows an eval run produces, since an eval run is itself a
+legitimate source of those rows. The prompt/model comparison suite runs the same `ScoringAgent`
+golden set twice — once under two different `AnthropicSettings.model_fast` overrides (a real
+cost delta from real Anthropic pricing, no regression), once under two `prompt_version` labels
+with a deliberately, documented-ly simulated consistency regression between them (there is no
+real prompt text to actually change here — no real Anthropic key exists in this environment, the
+Milestone 08 caveat carried into this milestone too) — and asserts the comparison report catches
+exactly that regression. `make eval` (`pytest -m evals`) runs the whole suite.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -323,7 +348,8 @@ acceptance criterion, literally exercised.
 | 20        | CRM integration                       | ✅ Complete                    |
 | 21        | Opportunity engine                    | ✅ Complete (see caveat above) |
 | 22        | Analytics + learning loop             | ✅ Complete                    |
-| 23–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 23        | AI evaluation system                  | ✅ Complete                    |
+| 24–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

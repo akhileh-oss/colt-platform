@@ -32,6 +32,10 @@ from colt_workflows.activities.lead_outreach import (
     ResearchCompanyInput,
     ResearchCompanyOutput,
 )
+from colt_workflows.activities.opportunity import (
+    EvaluateOpportunityActivityInput,
+    EvaluateOpportunityActivityOutput,
+)
 from colt_workflows.activities.reply_intelligence import (
     ClassifyReplyActivityInput,
     ClassifyReplyActivityOutput,
@@ -70,6 +74,7 @@ async def _run(
     check_conversation_activity: _Activity,
     research_company_activity: _Activity | None = None,
     classify_reply_activity: _Activity | None = None,
+    evaluate_opportunity_activity: _Activity | None = None,
 ) -> LeadOutreachOutcome:
     activities: list[_Activity] = [
         load_outreach_state_activity,
@@ -81,6 +86,8 @@ async def _run(
         activities.append(research_company_activity)
     if classify_reply_activity is not None:
         activities.append(classify_reply_activity)
+    if evaluate_opportunity_activity is not None:
+        activities.append(evaluate_opportunity_activity)
 
     async with (
         await WorkflowEnvironment.start_time_skipping() as env,
@@ -265,6 +272,7 @@ async def test_stops_when_policy_denies_for_a_non_approval_reason() -> None:
 async def test_stops_the_sequence_when_the_lead_replies_and_classifies_it() -> None:
     conversation_id = str(uuid.uuid4())
     classify_calls: list[ClassifyReplyActivityInput] = []
+    evaluate_calls: list[EvaluateOpportunityActivityInput] = []
 
     @activity.defn(name="load_outreach_state_activity")
     async def load_outreach_state_activity(input: LoadOutreachStateInput) -> OutreachState:
@@ -293,16 +301,79 @@ async def test_stops_the_sequence_when_the_lead_replies_and_classifies_it() -> N
         classify_calls.append(input)
         return ClassifyReplyActivityOutput(applied_state="QUESTION")
 
+    @activity.defn(name="evaluate_opportunity_activity")
+    async def evaluate_opportunity_activity(
+        input: EvaluateOpportunityActivityInput,
+    ) -> EvaluateOpportunityActivityOutput:
+        evaluate_calls.append(input)
+        return EvaluateOpportunityActivityOutput(has_commercial_intent=True)
+
     result = await _run(
         load_outreach_state_activity=load_outreach_state_activity,
         draft_next_message_activity=draft_next_message_activity,
         send_email_activity=send_email_activity,
         check_conversation_activity=check_conversation_activity,
         classify_reply_activity=classify_reply_activity,
+        evaluate_opportunity_activity=evaluate_opportunity_activity,
     )
 
     assert result.status == "REPLIED"
     (call,) = classify_calls
+    assert call.conversation_id == conversation_id
+    # A QUESTION classification is not POSITIVE (CLAUDE.md §11.2) — OpportunityAgent (§12.11,
+    # Milestone 21) evaluates only positive conversations, never every reply.
+    assert evaluate_calls == []
+
+
+@pytest.mark.asyncio
+async def test_evaluates_opportunity_when_a_reply_is_classified_positive() -> None:
+    conversation_id = str(uuid.uuid4())
+    evaluate_calls: list[EvaluateOpportunityActivityInput] = []
+
+    @activity.defn(name="load_outreach_state_activity")
+    async def load_outreach_state_activity(input: LoadOutreachStateInput) -> OutreachState:
+        return _eligible_state()
+
+    @activity.defn(name="draft_next_message_activity")
+    async def draft_next_message_activity(input: DraftNextMessageInput) -> DraftNextMessageOutput:
+        return DraftNextMessageOutput(message_id=str(uuid.uuid4()))
+
+    @activity.defn(name="send_email_activity")
+    async def send_email_activity(input: SendEmailActivityInput) -> SendEmailActivityOutput:
+        return SendEmailActivityOutput(status="SENT", provider_message_id="<sent@colt.local>")
+
+    @activity.defn(name="check_conversation_activity")
+    async def check_conversation_activity(
+        input: CheckConversationInput,
+    ) -> CheckConversationOutput:
+        return CheckConversationOutput(
+            replied=True, unsubscribed=False, conversation_id=conversation_id
+        )
+
+    @activity.defn(name="classify_reply_activity")
+    async def classify_reply_activity(
+        input: ClassifyReplyActivityInput,
+    ) -> ClassifyReplyActivityOutput:
+        return ClassifyReplyActivityOutput(applied_state="POSITIVE")
+
+    @activity.defn(name="evaluate_opportunity_activity")
+    async def evaluate_opportunity_activity(
+        input: EvaluateOpportunityActivityInput,
+    ) -> EvaluateOpportunityActivityOutput:
+        evaluate_calls.append(input)
+        return EvaluateOpportunityActivityOutput(has_commercial_intent=True)
+
+    result = await _run(
+        load_outreach_state_activity=load_outreach_state_activity,
+        draft_next_message_activity=draft_next_message_activity,
+        send_email_activity=send_email_activity,
+        check_conversation_activity=check_conversation_activity,
+        classify_reply_activity=classify_reply_activity,
+        evaluate_opportunity_activity=evaluate_opportunity_activity,
+    )
+
+    assert result.status == "REPLIED"
+    (call,) = evaluate_calls
     assert call.conversation_id == conversation_id
 
 

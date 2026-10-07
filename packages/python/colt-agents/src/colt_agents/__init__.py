@@ -42,6 +42,13 @@ from colt_agents.messaging_agent import (
     MessagingAgentInput,
     MessagingAgentOutput,
 )
+from colt_agents.opportunity_agent import AGENT_NAME as OPPORTUNITY_AGENT_NAME
+from colt_agents.opportunity_agent import AGENT_VERSION as OPPORTUNITY_AGENT_VERSION
+from colt_agents.opportunity_agent import (
+    OPPORTUNITY_AGENT_DEFINITION,
+    OpportunityAgentInput,
+    OpportunityDecision,
+)
 from colt_agents.personalization_agent import AGENT_NAME as PERSONALIZATION_AGENT_NAME
 from colt_agents.personalization_agent import AGENT_VERSION as PERSONALIZATION_AGENT_VERSION
 from colt_agents.personalization_agent import (
@@ -102,6 +109,9 @@ __all__ = [
     "MESSAGING_AGENT_DEFINITION",
     "MESSAGING_AGENT_NAME",
     "MESSAGING_AGENT_VERSION",
+    "OPPORTUNITY_AGENT_DEFINITION",
+    "OPPORTUNITY_AGENT_NAME",
+    "OPPORTUNITY_AGENT_VERSION",
     "PERSONALIZATION_AGENT_DEFINITION",
     "PERSONALIZATION_AGENT_NAME",
     "PERSONALIZATION_AGENT_VERSION",
@@ -138,6 +148,8 @@ __all__ = [
     "MaxToolCallsExceededError",
     "MessagingAgentInput",
     "MessagingAgentOutput",
+    "OpportunityAgentInput",
+    "OpportunityDecision",
     "PersonalizationAgentInput",
     "PersonalizationStrategy",
     "PromptNotFoundError",

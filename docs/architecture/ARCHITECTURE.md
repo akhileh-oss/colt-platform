@@ -528,3 +528,59 @@ shortcut `test_lead_outreach_activities.py` already documents): two queued provi
 followed by a successful call leave exactly one `CrmSyncRecord` row, `SYNCED`, with exactly one
 provider-side object ever created — the literal "retries safely after recovery, no duplicate
 side effects" (§96).
+
+## 16. Opportunity engine (Milestone 21)
+
+`colt_application.opportunity_state.OPPORTUNITY_TRANSITIONS` (CLAUDE.md §11.3) is a transition
+table this milestone's own Build list item ("opportunity state machine") specifies, the same
+"CLAUDE.md names a state machine's stages but not its legal moves" reasoning `campaign_state.py`
+(Milestone 14) already documents: a straight line `QUALIFIED` -> `DISCOVERY` -> `EVALUATION` ->
+`PROPOSAL` -> `NEGOTIATION` -> `WON`, with `LOST` reachable from any non-terminal stage and
+neither `WON` nor `LOST` ever reopening. `TransitionOpportunityStage` is the one use case that
+actually moves a row, raising `InvalidOpportunityTransitionError` for anything the table
+forbids — never a caller-supplied stage applied unconditionally.
+
+`OpportunityAgent` (CLAUDE.md §12.11 — the shortest agent entry in the spec, with no input/output
+schema or tool list given) judges exactly one thing: whether a conversation already classified
+`POSITIVE` (§11.2) carries real commercial intent, and, only if so, an optional deal value. Any
+value it supplies must be labeled `is_estimate=true` — `OpportunityDecision`'s own validator
+rejects an unlabeled one, since no configured override source exists anywhere in this codebase
+to ever let a figure go unlabeled (§12.11's "estimates must be labeled estimates"). The agent's
+one write tool, `create_or_update_opportunity`, is the only path into
+`CreateOrUpdateOpportunity` — the deterministic half, and the actual mechanism behind "positive
+conversations can become auditable opportunities without duplicate creation" (Milestone 21's
+acceptance criterion): at most one open (non-`WON`/`LOST`) `Opportunity` per `company_id`,
+looked up via `OpportunityRepository.get_open_by_company`. A second positive conversation for a
+company already being tracked updates the existing row (gaining a value it didn't have, never
+overwriting one it did) rather than creating a duplicate; a company whose only prior opportunity
+already closed gets a brand new one, since nothing is "open" to reuse.
+
+`AssignOpportunityOwner` is the owner-assignment Build item: it validates the given `owner_id`
+against the tenant-scoped `UserRepository` before writing it, so a cross-tenant or nonexistent
+id surfaces as the same `NotFoundError` every other use case raises for a missing reference, not
+a silently-accepted foreign key. `summarize_pipeline`/`summarize_revenue_by_source` are pure,
+stateless aggregations over `Opportunity` rows (the same "pure function of already-stored
+fields" shape `colt_application.signals.rank_signal` already establishes) backing the pipeline
+dashboard's per-stage counts/value and closed-won revenue grouped by `Opportunity.source` — the
+"revenue attribution" Build item, CLAUDE.md naming it without a mechanism, so grouping by the
+field `CreateOrUpdateOpportunity` already records is this milestone's own documented design
+call. The `/api/v1/opportunities` REST surface and the `OpportunitiesPage` frontend follow the
+established `campaigns.py`/`CampaignsPage` shape exactly — permission-gated routes
+(`OPPORTUNITY_READ`/`OPPORTUNITY_WRITE`, two new `colt_domain.roles.Permission` values) driving
+these same use cases, never touching `colt_db` models directly.
+
+`evaluate_opportunity_activity` wires a real `AgentRuntime` running `OpportunityAgent` behind
+Temporal, the same composition-root shape `classify_reply_activity` (Milestone 19) already
+established for the agent immediately before it in the pipeline. `LeadOutreachWorkflow` calls it
+only when `classify_reply_activity`'s own returned `applied_state` is `POSITIVE` — never for
+every reply, since a `QUESTION`/`OBJECTION`/etc. classification has no commercial intent to
+evaluate yet.
+
+Milestone 21's acceptance criterion is proven at two layers. `OpportunityAgent` itself
+constructs a real `AnthropicGateway` and is proven hermetically only
+(`packages/python/colt-agents/tests/test_colt_agents_opportunity_agent.py`) — no real Anthropic
+key exists in this environment, the same caveat carried since Milestone 08. The deterministic
+half the criterion actually turns on — two separate positive-conversation triggers for the same
+company producing exactly one `Opportunity` row, never two — is proven against real Postgres in
+`tests/integration/test_opportunity_engine.py`, alongside the full pipeline lifecycle to `WON`,
+a rejected illegal transition, and owner assignment.

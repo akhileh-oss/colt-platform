@@ -11,17 +11,21 @@ from colt_application.errors import (
     CampaignValidationError,
     InvalidApprovalTransitionError,
     InvalidCampaignTransitionError,
+    InvalidOpportunityTransitionError,
     MessageValidationError,
     NotFoundError,
     OrganizationContextError,
     PolicyDeniedError,
 )
 from colt_application.identity import DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD
+from colt_application.opportunity_state import OPPORTUNITY_TRANSITIONS, can_transition_stage
+from colt_application.pipeline_summary import PipelineStageSummary, summarize_pipeline
 from colt_application.reply_classification import Urgency, determine_conversation_transition
 from colt_application.research import (
     DEFAULT_FRESHNESS_THRESHOLD_DAYS,
     determine_verification_status,
 )
+from colt_application.revenue_attribution import RevenueAttributionRow, summarize_revenue_by_source
 from colt_application.scoring import (
     DEFAULT_SCORE_WEIGHTS,
     QUALIFICATION_THRESHOLD,
@@ -40,7 +44,12 @@ from colt_application.signals import (
 )
 from colt_application.use_cases.add_sequence_step import AddSequenceStep
 from colt_application.use_cases.add_suppression_entry import AddSuppressionEntry
+from colt_application.use_cases.assign_opportunity_owner import AssignOpportunityOwner
 from colt_application.use_cases.create_campaign import CreateCampaign
+from colt_application.use_cases.create_or_update_opportunity import (
+    CreateOrUpdateOpportunity,
+    OpportunityUpsertResult,
+)
 from colt_application.use_cases.decide_message_approval import DecideMessageApproval
 from colt_application.use_cases.discover_company import DiscoverCompany
 from colt_application.use_cases.discover_person import DiscoverPerson
@@ -70,6 +79,7 @@ from colt_application.use_cases.select_personalization_evidence import (
     SelectPersonalizationEvidence,
 )
 from colt_application.use_cases.send_message import SendMessage
+from colt_application.use_cases.transition_opportunity_stage import TransitionOpportunityStage
 from colt_application.use_cases.unsubscribe_by_token import UnsubscribeByToken
 from colt_application.use_cases.validate_campaign import ValidateCampaign
 
@@ -84,6 +94,7 @@ __all__ = [
     "DEFAULT_SIGNAL_CONFIDENCE",
     "DEFAULT_SIGNAL_FRESHNESS_THRESHOLD_DAYS",
     "DEFAULT_SIGNAL_TYPE_WEIGHT",
+    "OPPORTUNITY_TRANSITIONS",
     "QUALIFICATION_THRESHOLD",
     "SCORE_MODEL_VERSION",
     "SIGNAL_TYPE_WEIGHTS",
@@ -91,8 +102,10 @@ __all__ = [
     "AddSequenceStep",
     "AddSuppressionEntry",
     "ApplicationError",
+    "AssignOpportunityOwner",
     "CampaignValidationError",
     "CreateCampaign",
+    "CreateOrUpdateOpportunity",
     "DecideMessageApproval",
     "DiscoverCompany",
     "DiscoverPerson",
@@ -103,15 +116,18 @@ __all__ = [
     "GetLead",
     "InvalidApprovalTransitionError",
     "InvalidCampaignTransitionError",
+    "InvalidOpportunityTransitionError",
     "ListCampaigns",
     "ListEvidenceForLead",
     "ListMessages",
     "ListSequenceSteps",
     "MessageValidationError",
     "NotFoundError",
+    "OpportunityUpsertResult",
     "OrganizationContext",
     "OrganizationContextError",
     "PauseCampaign",
+    "PipelineStageSummary",
     "PolicyDeniedError",
     "ProcessBounce",
     "ProcessInboundEmail",
@@ -121,14 +137,17 @@ __all__ = [
     "RecordSignal",
     "ResolveOrganizationContext",
     "ResumeCampaign",
+    "RevenueAttributionRow",
     "ScoreLead",
     "SelectPersonalizationEvidence",
     "SendMessage",
+    "TransitionOpportunityStage",
     "UnsubscribeByToken",
     "Urgency",
     "ValidateCampaign",
     "__version__",
     "can_transition",
+    "can_transition_stage",
     "compute_overall_score",
     "determine_conversation_transition",
     "determine_qualification",
@@ -136,5 +155,7 @@ __all__ = [
     "determine_verification_status",
     "get_brand_voice",
     "rank_signal",
+    "summarize_pipeline",
+    "summarize_revenue_by_source",
     "validate_campaign_definition",
 ]

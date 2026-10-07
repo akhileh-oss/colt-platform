@@ -82,6 +82,16 @@ class PolicyDeniedError(ApplicationError):
         self.failed_checks = failed_checks
 
 
+class InvalidOpportunityTransitionError(ApplicationError):
+    """Raised when a use case asks for a `PipelineStage` transition `opportunity_state`
+    forbids."""
+
+    def __init__(self, current: str, target: str) -> None:
+        super().__init__(f"Cannot transition an opportunity from {current} to {target}.")
+        self.current = current
+        self.target = target
+
+
 class InvalidApprovalTransitionError(ApplicationError):
     """Raised when a use case asks to decide an `Approval` that is not `PENDING`.
 

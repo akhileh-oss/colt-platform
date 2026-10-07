@@ -25,6 +25,7 @@ from colt_workflows.activities.lead_outreach import (
     load_outreach_state_activity,
     research_company_activity,
 )
+from colt_workflows.activities.opportunity import evaluate_opportunity_activity
 from colt_workflows.activities.reply_intelligence import classify_reply_activity
 from colt_workflows.activities.send_email import send_email_activity
 from colt_workflows.activities.trace_check import count_organizations
@@ -54,6 +55,7 @@ ACTIVITIES: Sequence[Any] = (
     draft_next_message_activity,
     check_conversation_activity,
     classify_reply_activity,
+    evaluate_opportunity_activity,
     sync_entity_to_crm_activity,
 )
 

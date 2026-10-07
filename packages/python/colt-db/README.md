@@ -53,5 +53,14 @@ backing `SqlAlchemyCrmSyncRecordRepository.get_by_target()`'s upsert lookup.
 `SqlAlchemyOpportunityRepository.get()` (present since Milestone 05 but never read by a use case
 until now) is this milestone's first real caller.
 
+`opportunities.is_estimated_value` (CLAUDE.md §12.11, Milestone 21) is a new column — boolean,
+`NOT NULL`, default `false` — labeling whether `estimated_value` came from a model's own
+judgment rather than a configured source Colt trusts outright (§12.11: "estimates must be
+labeled estimates"). `SqlAlchemyOpportunityRepository` gained `get_open_by_company()` (the
+duplicate-creation check — one open, non-`WON`/`LOST` opportunity per company, oldest wins if
+more than one somehow exists), `list_all()` (the pipeline dashboard's read model), and
+`update_stage()`/`assign_owner()`/`update_value()` — the three real mutations; `.add()` gained
+the new column as a keyword argument.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

@@ -1,0 +1,253 @@
+# CI pipeline (CLAUDE.md §53.1, §68 Milestone 26). Every stage CLAUDE.md's Build list names
+# is its own job: install, lint, typecheck, unit tests, integration tests, e2e tests, security
+# scan, build images, migration validation, deploy staging, smoke tests. Jobs that only read
+# the repository (lint/typecheck/unit/security) run on every push and PR; jobs that touch real
+# infrastructure (build-images/deploy-staging/smoke-test-staging) run only once a PR merges to
+# `main` — a draft PR's CI should never push an image or touch staging.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  install-lint-typecheck:
+    name: Install, lint, typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: make install
+      - run: make lint
+      - run: make typecheck
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # check-secrets.sh needs history to scan, not just the working tree
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: make install
+      - run: make security
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: make install
+      - run: make test-unit
+
+  # Integration, workflow, security-regression, and e2e tests all need the same real local
+  # stack (Postgres, Redis, Temporal, ...) that `make dev` already brings up for a developer —
+  # CI runs the identical command rather than a parallel GitHub Actions `services:` block that
+  # could silently drift from what a contributor's own machine does.
+  integration-and-workflow-tests:
+    name: Integration, workflow, and security-regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: make install
+      - run: make dev
+      - run: make migrate
+      - run: make test-integration
+      - run: make test-workflows
+      - run: make test-security
+      - if: always()
+        run: docker compose logs
+      - if: always()
+        run: make down
+
+  e2e-tests:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: make install
+      - run: make dev
+      - run: make migrate
+      - run: make seed
+      - run: make test-e2e
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+      - if: always()
+        run: make down
+
+  # The literal acceptance criterion this check proves (CLAUDE.md §9's migration discipline):
+  # every model change has a matching Alembic revision. `--autogenerate --check` against a
+  # fresh, fully-migrated database must find nothing left to generate; if it does, someone
+  # edited a `colt_db` model without creating the migration for it.
+  migration-validation:
+    name: Migration validation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: colt
+          POSTGRES_PASSWORD: colt
+          POSTGRES_DB: colt
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: psql postgresql://colt:colt@localhost:5432/colt -f infrastructure/docker/postgres/init/01-extensions.sql
+      - run: cd packages/python/colt-db && uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://colt:colt@localhost:5432/colt
+      - name: Fail if a model change has no matching migration
+        run: |
+          cd packages/python/colt-db
+          uv run alembic check
+        env:
+          DATABASE_URL: postgresql+asyncpg://colt:colt@localhost:5432/colt
+
+  build-images:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    needs:
+      [
+        install-lint-typecheck,
+        security,
+        unit-tests,
+        integration-and-workflow-tests,
+        migration-validation,
+      ]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write # OIDC — no long-lived AWS key stored in this repository
+      contents: read
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tag
+        run: echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build and push api
+        run: |
+          docker build -f apps/api/Dockerfile \
+            -t "${{ steps.ecr.outputs.registry }}/colt-api:${{ steps.tag.outputs.tag }}" .
+          docker push "${{ steps.ecr.outputs.registry }}/colt-api:${{ steps.tag.outputs.tag }}"
+      - name: Build and push web
+        run: |
+          docker build -f apps/web/Dockerfile \
+            -t "${{ steps.ecr.outputs.registry }}/colt-web:${{ steps.tag.outputs.tag }}" .
+          docker push "${{ steps.ecr.outputs.registry }}/colt-web:${{ steps.tag.outputs.tag }}"
+      - name: Build and push worker
+        run: |
+          docker build -f infrastructure/docker/worker/Dockerfile \
+            -t "${{ steps.ecr.outputs.registry }}/colt-worker:${{ steps.tag.outputs.tag }}" .
+          docker push "${{ steps.ecr.outputs.registry }}/colt-worker:${{ steps.tag.outputs.tag }}"
+
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: infrastructure/environments/staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: terraform init
+      - run: |
+          terraform apply -auto-approve \
+            -var "api_image=$(echo "${{ secrets.ECR_REGISTRY }}/colt-api:${{ needs.build-images.outputs.image_tag }}")" \
+            -var "web_image=$(echo "${{ secrets.ECR_REGISTRY }}/colt-web:${{ needs.build-images.outputs.image_tag }}")" \
+            -var "worker_image=$(echo "${{ secrets.ECR_REGISTRY }}/colt-worker:${{ needs.build-images.outputs.image_tag }}")"
+      - id: url
+        run: echo "app_url=$(terraform output -raw app_url)" >> "$GITHUB_OUTPUT"
+    outputs:
+      app_url: ${{ steps.url.outputs.app_url }}
+
+  smoke-test-staging:
+    name: Smoke test staging
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    steps:
+      # `/api/v1/meta` (not `/live`): the ALB's listener only routes `/api/*` to the `api`
+      # target group and `/*` to `web` (`compute` module's path-based rules) — `/live`/`/ready`
+      # have no `/api/v1` prefix (`health.router` is mounted bare, for the ALB's own direct
+      # target-group health checks, which bypass listener routing entirely) and so are not
+      # reachable through the public ALB DNS name at all. `/api/v1/meta` is the one
+      # unauthenticated, `/api/*`-routed endpoint that actually proves the `api` service is up.
+      - name: api is live and serving (through the ALB's /api/* route)
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 15 --retry-connrefused \
+            "${{ needs.deploy-staging.outputs.app_url }}/api/v1/meta"
+      - name: web is live and serving (through the ALB's /* route)
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 15 --retry-connrefused \
+            "${{ needs.deploy-staging.outputs.app_url }}/"

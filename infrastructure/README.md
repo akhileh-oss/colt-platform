@@ -5,6 +5,8 @@ docker/
   postgres/init/  SQL run once on first database initialisation (pgvector, pgcrypto)
   keycloak/       Realm import for the local `colt` realm
   otel/           OpenTelemetry Collector configuration
+  worker/         Dockerfile for the Temporal worker (`colt_workflows`, Milestone 26) — no
+                  `apps/` directory of its own, so it lives alongside other infra config
 terraform/
   bootstrap/      One-time: the S3 state bucket + DynamoDB lock table every environment's
                   own state lives in. Applied once by hand, outside any environment's backend.
@@ -19,7 +21,11 @@ environments/
 ```
 
 The local stack is declared in `docker-compose.yml` at the repository root and started with
-`make dev`. Application images (api, web, worker) are added in Milestones 02, 03 and 06.
+`make dev`. `apps/api/Dockerfile`, `apps/web/Dockerfile`, and `docker/worker/Dockerfile`
+(Milestone 26) build the three production images `.github/workflows/ci.yml` pushes to ECR and
+`terraform/modules/compute` runs — the application code they package was added across
+Milestones 02, 03, and 06, but local development itself still runs it directly (`make api`/
+`make web`/`make worker`), never through these images.
 
 Environments have separate credentials and separate infrastructure. Local configuration must never
 be able to target production (`CLAUDE.md` §7.1, §6.4). `staging/` and `production/` are
@@ -48,3 +54,18 @@ terraform apply
 # (terraform/modules/secrets) with its real value via the AWS console or
 # `aws secretsmanager put-secret-value`.
 ```
+
+**CI/CD setup (Milestone 26, one-time, by a repo admin):** `.github/workflows/ci.yml` and
+`deploy-production.yml` need these repository secrets — `AWS_CI_ROLE_ARN` (assumed by `ci.yml`
+to push images and apply staging; least-privilege, scoped to ECR push + the staging Terraform
+state/resources), `AWS_CD_ROLE_ARN` (assumed by `deploy-production.yml`; scoped to production's
+own state/resources, deliberately a separate role from staging's), and `ECR_REGISTRY` (the
+account's ECR registry hostname). None of these is a long-lived AWS access key — both roles are
+assumed via GitHub's OIDC provider (`aws-actions/configure-aws-credentials`), which itself needs
+an IAM OIDC identity provider for `token.actions.githubusercontent.com` configured once per AWS
+account (outside this repository's own Terraform, since it is an IAM-account-wide resource, not
+scoped to one environment). Production additionally needs a **required reviewer** configured on
+this repository's "production" GitHub Environment (Settings → Environments → production) —
+`CLAUDE.md` §56's "production deployment must require an explicit release step/approval" is
+only actually enforced once that reviewer is set; `deploy-production.yml` declares the
+dependency on it but cannot configure it from a workflow file.

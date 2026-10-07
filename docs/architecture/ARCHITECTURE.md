@@ -936,3 +936,94 @@ HCL syntax, type constraints, and inter-module reference graph are internally co
 is the static half of "reproducible"; the real-infrastructure half (an actual `plan`/`apply`
 cycle, and Milestone 27's staging soak test that depends on one having happened) is this
 milestone's own honestly-reported gap, not a claim of completion it cannot back.
+
+---
+
+## 21. CI/CD and release engineering (Milestone 26)
+
+CLAUDE.md §68's Build list for this milestone is a literal pipeline shape — install, lint,
+typecheck, unit tests, integration tests, e2e tests where configured, security scan, build
+images, migration validation, deploy staging, smoke tests — plus one rule that applies past the
+pipeline itself: "production deployment must require an explicit release step/approval."
+`.github/workflows/ci.yml` implements the pipeline as one job per stage; `.github/workflows/
+deploy-production.yml` implements the rule as a second, deliberately separate workflow.
+
+**Why every real-infrastructure job only runs on `main`.** `ci.yml` triggers on every push and
+pull request, but `build-images`, `deploy-staging`, and `smoke-test-staging` are gated with
+`if: github.ref == 'refs/heads/main'`. A draft PR's own CI proves the code is correct — lint,
+types, every test suite, a security scan, a real `alembic check` — without ever pushing an
+image to a real registry or touching the real staging environment Milestone 25 built. Only a
+merge to `main` earns the right to do either.
+
+**Why integration/workflow/security/e2e tests run `make dev`, not a GitHub Actions `services:`
+block.** A `services:` block would need its own, separately-maintained definition of "the local
+stack" — Postgres with the right extensions, Redis, Temporal, Mailpit, MinIO — that could drift
+from `docker-compose.yml`'s own definition the moment either one changes without the other.
+Running the exact command a contributor runs locally (`make dev` → `make migrate` → the test
+targets) means CI and a developer's own machine can never silently disagree about what "the
+stack" is.
+
+**Migration validation is `alembic check`, not just `alembic upgrade head`.** Applying every
+migration to a fresh database proves the migrations themselves are valid SQL, but says nothing
+about whether a `colt_db` model changed without a matching migration being written for it —
+exactly the drift CLAUDE.md §9's "every model change needs a matching migration" rule exists to
+prevent. `alembic check` (available since Alembic 1.9) autogenerates against the
+already-migrated database and fails the job if it finds anything left to generate. Running it
+for real during this milestone's own build caught genuine, pre-existing drift — the `campaigns`
+table's status check constraint had kept its pre-naming-convention literal name
+(`valid_campaign_status`) instead of the name `colt_db.base`'s `_NAMING_CONVENTION` has actually
+compiled it to (`ck_campaigns_valid_campaign_status`) ever since that convention was added, and
+`conversation_events.event_metadata`/`sequence_steps.conditions` were migrated as generic `JSON`
+though their models have declared `JSONB` for some time. Migration `ee0e282d11ae` reconciles
+both — verified for real (upgrade, `alembic check` passes, downgrade, upgrade again) against a
+disposable Postgres database, not merely reasoned about.
+
+**Images.** Three new Dockerfiles — `apps/api/Dockerfile`, `apps/web/Dockerfile`,
+`infrastructure/docker/worker/Dockerfile` (the Temporal worker has no `apps/` directory of its
+own, so its Dockerfile lives alongside this repository's other infrastructure configuration
+instead of implying one) — all built from the repository root as their Docker context, since
+this is a `uv`/pnpm workspace and each app's local path dependencies on sibling packages need
+the whole workspace to resolve. `apps/web`'s `next.config.ts` gained `output: "standalone"`
+(Milestone 26's own addition) so its runtime image copies only `.next/standalone` plus
+`public`/`.next/static`, never the full pnpm workspace `node_modules`, whose symlinks don't
+survive a Docker `COPY` the way a self-contained standalone bundle does. `build-images`
+authenticates to ECR through AWS OIDC (`aws-actions/configure-aws-credentials`) — no long-lived
+AWS access key is stored in this repository's secrets at all, only a role ARN the workflow
+assumes for the run's own duration.
+
+**Deploying.** `deploy-staging` (in `ci.yml`, gated to `main`) and `deploy-production` (in its
+own workflow) both run `terraform apply` against the Milestone 25 environments, passing the
+freshly-built image tag as the three `*_image` variables. Each smoke-tests through the real ALB
+afterward: `GET /api/v1/meta` (unauthenticated, routed by the ALB's `/api/*` listener rule to
+the `api` target group) and `GET /` (routed by its catch-all `/*` rule to `web`) — proving both
+services are actually internet-reachable through the load balancer, not merely that ECS reports
+their tasks healthy (which the ALB checks directly against each target, bypassing listener
+routing entirely, and would pass even if a listener rule were wrong). `/live`/`/ready`
+(`health.router`, mounted without the `/api/v1` prefix) are deliberately not used for this: they
+are not matched by either listener rule, so they are unreachable from the public internet by
+design — a correct outcome for probes the ALB itself only ever calls directly, not a gap.
+
+**Production's explicit release step/approval**, concretely: `deploy-production.yml` triggers
+only on `workflow_dispatch` — a human, in the Actions tab, choosing an already-built,
+already-staging-soaked image tag by hand; there is no push- or schedule-triggered path from
+"merged to main" to "running in production" at all. Its job also declares `environment:
+production`, which GitHub gates behind that environment's own protection rules (configured in
+the repository's Settings → Environments, most importantly a required reviewer) once a repo
+admin sets one up. That setup is a one-time, account-level action this workflow file cannot
+perform itself — declaring the dependency is as far as a workflow file can reach — and is
+documented here as a prerequisite rather than silently assumed already done.
+
+**What could not be verified here, and why.** This sandbox's shared network egress is
+rate-limited by Docker Hub (`429 Too Many Requests` resolving `python:3.12-slim` and every other
+`docker.io` base image), so an actual `docker build` of any of the three new Dockerfiles was
+`NOT RUN` — confirmed reproducible (a fresh `docker pull python:3.12-slim` hits the same 429
+after a 30-second wait), and not worked around by substituting a non-standard base image just to
+make local verification possible. Every build stage's own underlying command was still run for
+real outside a container, against a disposable copy of the full build context: `uv sync
+--frozen --no-dev --no-install-project` then `uv sync --frozen --no-dev` (api's two-layer
+dependency install), `uv sync --frozen --no-dev --package colt-workflows` (worker), and `pnpm
+--filter @colt/web build` (web — confirmed it produces exactly the
+`apps/web/.next/standalone/apps/web/server.js` path the Dockerfile's runtime stage expects).
+`actionlint` (both workflow files) and a YAML parse (both files) pass clean. `terraform
+plan`/`apply` for `deploy-staging`/`deploy-production` were, as in Milestone 25, `NOT RUN` for
+the same reason: no verified AWS account exists in this sandbox to provision against.

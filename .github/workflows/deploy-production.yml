@@ -1,0 +1,75 @@
+# Production deployment (CLAUDE.md §53.1, §68 Milestone 26, §56): "Production deployment must
+# require an explicit release step/approval." Two layers enforce that, neither optional:
+#
+# 1. `workflow_dispatch` only — this workflow never fires from a push or a schedule. A human
+#    must open the Actions tab and choose an already-built, already-staging-soaked image tag;
+#    there is no path from "code merged to main" to "running in production" without that.
+# 2. `environment: production` — gates the deploy job behind this repository's own
+#    "production" GitHub Environment protection rule. That rule (required reviewers) is
+#    configured in the repository's own Settings -> Environments, not in this file: GitHub's
+#    environment protection is an account/repo-level setting this workflow can declare a
+#    dependency on but cannot itself create. Until a repo admin configures a required
+#    reviewer there, this workflow's own approval gate is unenforced — documented here rather
+#    than silently assumed already in place.
+
+name: Deploy to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (the git SHA `deploy-staging` already ran this exact tag against) — never `:latest` (CLAUDE.md §88)."
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never cancel a production apply partway through
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy-production:
+    name: Apply Terraform to production
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: infrastructure/environments/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CD_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: terraform init
+      - run: terraform plan -out=production.tfplan
+          -var "api_image=${{ secrets.ECR_REGISTRY }}/colt-api:${{ inputs.image_tag }}"
+          -var "web_image=${{ secrets.ECR_REGISTRY }}/colt-web:${{ inputs.image_tag }}"
+          -var "worker_image=${{ secrets.ECR_REGISTRY }}/colt-worker:${{ inputs.image_tag }}"
+      - run: terraform apply production.tfplan
+      - id: url
+        run: echo "app_url=$(terraform output -raw app_url)" >> "$GITHUB_OUTPUT"
+    outputs:
+      app_url: ${{ steps.url.outputs.app_url }}
+
+  smoke-test-production:
+    name: Smoke test production
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    steps:
+      - name: api is live and serving
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 15 --retry-connrefused \
+            "${{ needs.deploy-production.outputs.app_url }}/api/v1/meta"
+      - name: web is live and serving
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 15 --retry-connrefused \
+            "${{ needs.deploy-production.outputs.app_url }}/"

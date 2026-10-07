@@ -322,6 +322,7 @@ def opportunity_to_domain(model: OpportunityModel) -> Opportunity:
         probability=float(model.probability) if model.probability is not None else None,
         owner_id=model.owner_id,
         source=model.source,
+        is_estimated_value=model.is_estimated_value,
         created_at=model.created_at,
         updated_at=model.updated_at,
     )

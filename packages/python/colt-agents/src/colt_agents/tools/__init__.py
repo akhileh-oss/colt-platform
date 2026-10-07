@@ -1,6 +1,11 @@
 """Concrete typed tools, built from application-layer use cases or provider ports (CLAUDE.md
 §2.3, §16)."""
 
+from colt_agents.tools.create_or_update_opportunity import (
+    CreateOrUpdateOpportunityInput,
+    CreateOrUpdateOpportunityOutput,
+    build_create_or_update_opportunity_tool,
+)
 from colt_agents.tools.draft_message import (
     DraftMessageInput,
     DraftMessageOutput,
@@ -71,6 +76,8 @@ from colt_agents.tools.select_evidence import (
 )
 
 __all__ = [
+    "CreateOrUpdateOpportunityInput",
+    "CreateOrUpdateOpportunityOutput",
     "DraftMessageInput",
     "DraftMessageOutput",
     "EnrichCompanyInput",
@@ -106,6 +113,7 @@ __all__ = [
     "SearchWebResultItem",
     "SelectEvidenceInput",
     "SelectEvidenceOutput",
+    "build_create_or_update_opportunity_tool",
     "build_draft_message_tool",
     "build_enrich_company_tool",
     "build_enrich_person_tool",

@@ -18,5 +18,11 @@ documented-design-decision pattern `CampaignStatus`/`Urgency` already establish.
 `.failed()` are the same `model_copy`-returning helper-method shape `Lead.with_status()`/
 `Conversation.with_state()` already use.
 
+`Opportunity.is_estimated_value` (§12.11, Milestone 21) labels whether `estimated_value` came
+from a model's own judgment rather than a configured source — §12.11's "estimates must be
+labeled estimates" needs somewhere to record that distinction. `.with_owner()`/`.with_value()`
+join `.with_stage()` as the entity's mutation helpers, the same `model_copy`-returning shape as
+every other entity's own.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

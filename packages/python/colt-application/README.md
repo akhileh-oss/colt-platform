@@ -136,5 +136,24 @@ actual provider call). `OpportunityRepository` (a new port — Milestone 20 is t
 that needs to read an `Opportunity` from the application layer) is a plain `Protocol` matching
 `SqlAlchemyOpportunityRepository`'s existing `add()`/`get()` shape.
 
+`colt_application.opportunity_state.OPPORTUNITY_TRANSITIONS` (CLAUDE.md §11.3, Milestone 21) is
+this milestone's own documented transition table — CLAUDE.md names the pipeline's seven stages
+but not which moves between them are legal, the same gap `campaign_state.py` already fills for
+Campaign: a straight line `QUALIFIED` -> ... -> `WON`, `LOST` reachable from any non-terminal
+stage, neither terminal stage ever reopening. `TransitionOpportunityStage` is the one use case
+that actually changes a row's stage, raising `InvalidOpportunityTransitionError` for anything
+the table forbids. `CreateOrUpdateOpportunity` is the literal mechanism behind "positive
+conversations can become auditable opportunities without duplicate creation" (Milestone 21's
+acceptance criterion): at most one open (non-`WON`/`LOST`) `Opportunity` per `company_id` — a
+second call for an already-tracked company updates the existing row (only gaining a value it
+didn't have) rather than creating a duplicate. `AssignOpportunityOwner` validates a given
+`owner_id` against the tenant-scoped `UserRepository` before writing it — a cross-tenant or
+nonexistent id raises the same `NotFoundError` every other use case raises for a missing
+reference. `colt_application.pipeline_summary.summarize_pipeline`/`colt_application.
+revenue_attribution.summarize_revenue_by_source` are pure, stateless aggregations over
+`Opportunity` rows (the same shape `colt_application.signals.rank_signal` already establishes)
+backing the pipeline dashboard and closed-won revenue attribution — grouped by `source`, this
+milestone's own documented design call for a Build item CLAUDE.md names without a mechanism.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

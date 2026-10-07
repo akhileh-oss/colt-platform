@@ -41,8 +41,13 @@ with workflow.unsafe.imports_passed_through():
         load_outreach_state_activity,
         research_company_activity,
     )
+    from colt_workflows.activities.opportunity import (
+        EvaluateOpportunityActivityInput,
+        evaluate_opportunity_activity,
+    )
     from colt_workflows.activities.reply_intelligence import (
         ClassifyReplyActivityInput,
+        ClassifyReplyActivityOutput,
         classify_reply_activity,
     )
     from colt_workflows.activities.send_email import SendEmailActivityInput, send_email_activity
@@ -151,7 +156,7 @@ class LeadOutreachWorkflow:
                 # (CLAUDE.md §23.1) — ReplyIntelligenceAgent (§12.10, Milestone 19) does the
                 # classification; this workflow's own job ends at terminating the sequence.
                 if conversation.conversation_id is not None:
-                    await workflow.execute_activity(
+                    classification = await workflow.execute_activity(
                         classify_reply_activity,
                         ClassifyReplyActivityInput(
                             organization_id=organization_id,
@@ -160,6 +165,21 @@ class LeadOutreachWorkflow:
                         start_to_close_timeout=timedelta(seconds=120),
                         retry_policy=_DEFAULT_RETRY_POLICY,
                     )
+                    assert isinstance(classification, ClassifyReplyActivityOutput)  # noqa: S101
+                    # - same narrowing as `state` above.
+                    # A POSITIVE reply (CLAUDE.md §11.2) is the one state OpportunityAgent
+                    # (§12.11, Milestone 21) evaluates — "positive conversations can become
+                    # auditable opportunities," never every reply regardless of its content.
+                    if classification.applied_state == "POSITIVE":
+                        await workflow.execute_activity(
+                            evaluate_opportunity_activity,
+                            EvaluateOpportunityActivityInput(
+                                organization_id=organization_id,
+                                conversation_id=conversation.conversation_id,
+                            ),
+                            start_to_close_timeout=timedelta(seconds=120),
+                            retry_policy=_DEFAULT_RETRY_POLICY,
+                        )
                 return LeadOutreachOutcome(status="REPLIED", detail="")
 
             # Neither — sequence continuation: loop back and re-evaluate state for the next step.

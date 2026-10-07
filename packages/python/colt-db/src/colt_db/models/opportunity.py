@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,3 +52,6 @@ class OpportunityModel(IdentityMixin, TimestampMixin, Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     source: Mapped[str | None] = mapped_column(String(100))
+    is_estimated_value: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )

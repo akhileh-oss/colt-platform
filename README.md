@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 20 — CRM Integration: complete.**
+**Milestone 21 — Opportunity Engine: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -249,6 +249,31 @@ both proven against real Postgres: a simulated outage syncing one `Company` does
 by a successful retry against the same target leave exactly one `CrmSyncRecord` row, `SYNCED`,
 with exactly one provider-side object ever created.
 
+Milestone 21 builds the Opportunity engine (`CLAUDE.md` §10.14, §11.3, §12.11). §11.3 names
+the pipeline's seven stages as "minimum lifecycle support" but — unlike Lead and Conversation —
+never states which moves between them are legal, so `opportunity_state.OPPORTUNITY_TRANSITIONS`
+is this milestone's own documented transition table: a straight line from `QUALIFIED` through
+`DISCOVERY`/`EVALUATION`/`PROPOSAL`/`NEGOTIATION` to `WON`, with `LOST` reachable from any
+non-terminal stage and neither `WON` nor `LOST` ever reopening. `OpportunityAgent` (§12.11)
+judges one thing only — whether a positive conversation carries real commercial intent, and,
+only when it does, an optional deal value it must always label `is_estimate=true` (no
+configured override source exists in this environment to ever let a value go unlabeled) — then
+calls `create_or_update_opportunity`. `CreateOrUpdateOpportunity` is what actually prevents a
+duplicate: at most one open (non-`WON`/`LOST`) `Opportunity` per `company_id`, so a second
+positive conversation with a company already being tracked updates the existing row (gaining a
+value it didn't have) rather than spawning a second one — the literal mechanism behind "without
+duplicate creation." `TransitionOpportunityStage` and `AssignOpportunityOwner` are the rest of
+the pipeline's and owner-assignment's deterministic mutations; `summarize_pipeline`/
+`summarize_revenue_by_source` are pure read-side aggregations backing the pipeline dashboard and
+closed-won revenue attribution (grouped by `Opportunity.source`, CLAUDE.md's own silence on a
+mechanism making this milestone's documented design call). `evaluate_opportunity_activity`
+wires a real `AgentRuntime` running `OpportunityAgent` behind Temporal, called from
+`LeadOutreachWorkflow` only when a reply's classification lands on `POSITIVE` — never every
+reply. No real Anthropic key exists in this environment, so `OpportunityAgent` itself is proven
+hermetically only; the deterministic dedup/state-machine logic the acceptance criterion actually
+turns on — two positive triggers for the same company producing exactly one `Opportunity` row —
+is proven against real Postgres.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -272,7 +297,8 @@ with exactly one provider-side object ever created.
 | 18        | Outreach workflow                     | ✅ Complete (see caveat above) |
 | 19        | Reply intelligence                    | ✅ Complete (see caveat above) |
 | 20        | CRM integration                       | ✅ Complete                    |
-| 21–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 21        | Opportunity engine                    | ✅ Complete (see caveat above) |
+| 22–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

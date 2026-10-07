@@ -58,6 +58,16 @@ conversation already closed (`UNSUBSCRIBED`/`HUMAN_HANDOFF`) never reopens from 
 design-decision pattern `CampaignStatus` (Milestone 14) already established where CLAUDE.md
 names a field without enumerating its values.
 
+`OPPORTUNITY_AGENT_DEFINITION` (§12.11, Milestone 21) — CLAUDE.md's shortest agent entry, with
+no input/output schema or tool list given — judges one thing: whether a `POSITIVE` conversation
+carries real commercial intent, and, only then, an optional deal value its own `OpportunityDecision`
+validator refuses to accept unlabeled (`is_estimate` must be `true` whenever a value is given —
+no configured override source exists anywhere in this codebase to ever let one go unlabeled,
+§12.11's "estimates must be labeled estimates"). Its one tool, `create_or_update_opportunity`,
+is the only path into `CreateOrUpdateOpportunity`'s deterministic dedup check — at most one open
+opportunity per company — so the model deciding "yes, create one" can never itself create a
+duplicate.
+
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)
 for the full mechanism (permission filtering, persistence, redaction, the evidence pipeline),
 and [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how

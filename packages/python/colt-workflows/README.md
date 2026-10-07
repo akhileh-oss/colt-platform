@@ -50,5 +50,12 @@ Temporal's own retries. `CrmReconciliationWorkflow` durably re-drives a batch of
 that activity, one `RetryPolicy`-governed call per target, and one target's exhausted retries
 never aborts the rest of the batch.
 
+`evaluate_opportunity_activity` (CLAUDE.md §12.11, §11.3, Milestone 21) wires a real
+`AgentRuntime` running `OpportunityAgent`, the same composition-root shape `classify_reply_
+activity` (Milestone 19) already established for the agent right before it in the pipeline.
+`LeadOutreachWorkflow` calls it only when `classify_reply_activity`'s own `applied_state` comes
+back `POSITIVE` — never for every reply, since a conversation classified `QUESTION`/
+`OBJECTION`/etc. has no commercial intent yet for `OpportunityAgent` to evaluate.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

@@ -226,6 +226,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List this organization's opportunities */
+        get: operations["list_opportunities_api_v1_opportunities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-stage opportunity counts and open value — the pipeline dashboard's read model */
+        get: operations["get_pipeline_summary_api_v1_opportunities_pipeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/revenue-attribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closed-won revenue grouped by source */
+        get: operations["get_revenue_attribution_api_v1_opportunities_revenue_attribution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a single opportunity */
+        get: operations["get_opportunity_api_v1_opportunities__opportunity_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/assign-owner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign an opportunity's owner to a user in this organization */
+        post: operations["assign_opportunity_owner_api_v1_opportunities__opportunity_id__assign_owner_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move an opportunity to another pipeline stage */
+        post: operations["transition_opportunity_stage_api_v1_opportunities__opportunity_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/unsubscribe/{organization_id}/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unsubscribe the recipient of one sent email */
+        post: operations["unsubscribe_api_v1_unsubscribe__organization_id___message_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/live": {
         parameters: {
             query?: never;
@@ -298,6 +417,14 @@ export interface components {
             message_strategy: string;
             /** Step Order */
             step_order: number;
+        };
+        /** AssignOpportunityOwnerRequest */
+        AssignOpportunityOwnerRequest: {
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
         };
         /** CampaignListResponse */
         CampaignListResponse: {
@@ -508,6 +635,56 @@ export interface components {
              */
             version: string;
         };
+        /** OpportunityListResponse */
+        OpportunityListResponse: {
+            /** Opportunities */
+            opportunities: components["schemas"]["OpportunityResponse"][];
+        };
+        /** OpportunityResponse */
+        OpportunityResponse: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string | null;
+            /** Estimated Value */
+            estimated_value: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Estimated Value */
+            is_estimated_value: boolean;
+            /** Lead Id */
+            lead_id: string | null;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Owner Id */
+            owner_id: string | null;
+            pipeline_stage: components["schemas"]["PipelineStage"];
+            /** Primary Person Id */
+            primary_person_id: string | null;
+            /** Probability */
+            probability: number | null;
+            /** Source */
+            source: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * OrganizationStatus
          * @enum {string}
@@ -525,6 +702,24 @@ export interface components {
             /** Slug */
             slug: string;
             status: components["schemas"]["OrganizationStatus"];
+        };
+        /**
+         * PipelineStage
+         * @enum {string}
+         */
+        PipelineStage: "QUALIFIED" | "DISCOVERY" | "EVALUATION" | "PROPOSAL" | "NEGOTIATION" | "WON" | "LOST";
+        /** PipelineStageSummaryResponse */
+        PipelineStageSummaryResponse: {
+            /** Count */
+            count: number;
+            stage: components["schemas"]["PipelineStage"];
+            /** Total Value */
+            total_value: number;
+        };
+        /** PipelineSummaryResponse */
+        PipelineSummaryResponse: {
+            /** Stages */
+            stages: components["schemas"]["PipelineStageSummaryResponse"][];
         };
         /** ReadinessCheckModel */
         ReadinessCheckModel: {
@@ -548,6 +743,24 @@ export interface components {
              * @example not_ready
              */
             status: string;
+        };
+        /** RevenueAttributionResponse */
+        RevenueAttributionResponse: {
+            /** Rows */
+            rows: components["schemas"]["RevenueAttributionRowResponse"][];
+        };
+        /** RevenueAttributionRowResponse */
+        RevenueAttributionRowResponse: {
+            /** Currency */
+            currency: string | null;
+            /** Includes Estimate */
+            includes_estimate: boolean;
+            /** Opportunity Count */
+            opportunity_count: number;
+            /** Source */
+            source: string;
+            /** Total Value */
+            total_value: number;
         };
         /**
          * Role
@@ -620,6 +833,10 @@ export interface components {
             trace_id: string | null;
             /** Workflow Id */
             workflow_id: string;
+        };
+        /** TransitionOpportunityStageRequest */
+        TransitionOpportunityStageRequest: {
+            target_stage: components["schemas"]["PipelineStage"];
         };
         /**
          * UserStatus
@@ -1200,6 +1417,287 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TraceCheckResponse"];
                 };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_opportunities_api_v1_opportunities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_pipeline_summary_api_v1_opportunities_pipeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineSummaryResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_revenue_attribution_api_v1_opportunities_revenue_attribution_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueAttributionResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_opportunity_api_v1_opportunities__opportunity_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assign_opportunity_owner_api_v1_opportunities__opportunity_id__assign_owner_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignOpportunityOwnerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    transition_opportunity_stage_api_v1_opportunities__opportunity_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionOpportunityStageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unsubscribe_api_v1_unsubscribe__organization_id___message_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation error */
             422: {

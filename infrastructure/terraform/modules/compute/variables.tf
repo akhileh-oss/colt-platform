@@ -51,7 +51,7 @@ variable "services" {
   description = <<-EOT
     Map of service name -> { image, cpu, memory, port, desired_count, public, path_pattern,
     health_check_path, environment (list of {name, value}) }. `image` is a full ECR URI with
-    tag; this module does not build or push images (CLAUDE.md §26's CI/CD milestone owns that).
+    tag; this module does not build or push images (Milestone 26, CI/CD, owns that).
   EOT
   type = map(object({
     image             = string

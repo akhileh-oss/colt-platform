@@ -32,5 +32,14 @@ never claims a looser bound than PostgreSQL actually enforces. `Company.descript
 their own deliberately tighter, documented caps instead (5,000 and 100,000 characters) —
 generous enough for any real use, never unbounded.
 
+`errors.py` (CLAUDE.md §5, §22, §96, Milestone 27) is new: `DomainError` and
+`DuplicateIdentityError`, the first exceptions this package defines. `colt_db`'s repositories
+raise `DuplicateIdentityError` when a real unique constraint catches two concurrent inserts of
+the same identity (found for real by Milestone 27's own `tests/soak/` suite, which reproduced
+`DiscoverCompany`/`DiscoverPerson` creating duplicate rows under concurrency before this fix) —
+living here, rather than in `colt_db` or `colt_application`, is what lets every layer above the
+database depend on a typed, catchable error without any of them taking on a SQLAlchemy
+dependency just to know a conflict happened.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any, cast
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from colt_db.mappers import person_to_domain
 from colt_db.models.person import PersonModel
 from colt_db.tenancy import TenantScopedRepository
-from colt_domain import EmailStatus, Person
+from colt_domain import DuplicateIdentityError, EmailStatus, Person
 
 
 class SqlAlchemyPersonRepository(TenantScopedRepository):
@@ -44,7 +46,16 @@ class SqlAlchemyPersonRepository(TenantScopedRepository):
             source_metadata=source_metadata or {},
         )
         self._session.add(model)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            if "uq_people_org_email" in str(exc.orig):
+                raise DuplicateIdentityError(
+                    f"A person with email={email!r} already exists in this organization "
+                    "(lost a concurrent insert race)."
+                ) from exc
+            raise
         await self._session.refresh(model)
         return person_to_domain(model)
 

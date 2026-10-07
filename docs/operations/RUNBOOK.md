@@ -1,7 +1,7 @@
 # Runbook
 
 > Skeleton established in Milestone 00; populated as operable surfaces land (Milestones 01, 17, 18,
-> 25). Specification: `CLAUDE.md` §71, §72, §87.
+> 25, 27). Specification: `CLAUDE.md` §71, §72, §87, §96.
 
 ## 1. Local environment
 
@@ -60,3 +60,37 @@ _Milestone 02 (API) and Milestone 25 (production)._
 ## 5. Escalation
 
 _Milestone 29._
+
+## 6. Staging soak test (Milestone 27)
+
+CLAUDE.md §96/§27's full chaos/volume list — thousands of mocked leads, long-running workflows,
+provider throttling, duplicate webhooks, worker/API restarts, DB reconnects, Redis failures,
+Temporal worker failures, AI provider transient errors — splits across two places:
+
+- **`tests/soak/`** (`make test-soak`) runs for real against local Postgres/Redis at a few-
+  hundred-row, single-machine scale, as a routine regression suite: identity-resolution
+  concurrency (duplicate-creation races), a real Postgres restart, a real Redis restart,
+  duplicate-webhook-delivery idempotency, and volume + tenant isolation. **Found and fixed two
+  real bugs this way** — `DiscoverCompany`/`DiscoverPerson` could create duplicate `Company`/
+  `Person` rows under concurrent discovery (fixed with partial unique indexes +
+  `colt_domain.DuplicateIdentityError`), and a duplicate unsubscribe webhook delivery raised a
+  raw, unhandled `IntegrityError` instead of the clean 204 its own docstring promised (fixed by
+  making `SqlAlchemySuppressionRepository.add()` idempotent under a `SAVEPOINT`).
+- **The literal "thousands... in staging" run** is `tests/soak/load/locustfile.py`
+  (`uv run locust -f tests/soak/load/locustfile.py --host <staging-url> --users 50
+--spawn-rate 5 --run-time 30m --headless`), against a real Milestone 25 staging environment.
+  **Not run in this sandbox** — no real AWS account exists here to have applied Milestone 25's
+  Terraform against, so there is no staging URL to point this at. Before running it for real:
+  1. Confirm staging is up: `curl <staging-url>/api/v1/meta` and `curl <staging-url>/`.
+  2. Seed realistic volume (thousands of companies/people/leads) — reuse `apps/api/scripts/
+seed_dev_data.py`'s own pattern, scaled up, or drive `DiscoverCompany`/`DiscoverPerson`
+     directly against staging's database from a one-off script.
+  3. Run the load test for the sustained duration CLAUDE.md's "realistic workloads" calls for
+     (30+ minutes, not a smoke-test-length run).
+  4. During the run, inject each remaining chaos scenario by hand against the real ECS
+     services: stop/start an `api`/`worker` task (API/worker restart), scale a service down to
+     0 and back (Temporal worker failure), temporarily revoke the Anthropic API key in Secrets
+     Manager and restore it (AI provider transient error).
+  5. Verify the acceptance criterion directly against the database afterward: no duplicate
+     rows, no cross-tenant rows visible from the wrong organization's own RLS-scoped query, no
+     workflow stuck in a non-terminal state with no further progress possible.

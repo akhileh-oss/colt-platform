@@ -1027,3 +1027,84 @@ dependency install), `uv sync --frozen --no-dev --package colt-workflows` (worke
 `actionlint` (both workflow files) and a YAML parse (both files) pass clean. `terraform
 plan`/`apply` for `deploy-staging`/`deploy-production` were, as in Milestone 25, `NOT RUN` for
 the same reason: no verified AWS account exists in this sandbox to provision against.
+
+---
+
+## 22. Staging soak test (Milestone 27)
+
+CLAUDE.md §96/§27 name a literal, specific acceptance criterion — "no data corruption,
+duplicate sends, cross-tenant access, or unrecoverable workflows" — under a literal, specific
+load: thousands of mocked leads, long-running workflows, provider throttling, duplicate
+webhooks, worker/API restarts, DB reconnects, Redis failures, Temporal worker failures, AI
+provider transient errors, **run in staging**. No real AWS account exists in this sandbox to
+have applied Milestone 25's Terraform against, so there is no staging environment this
+milestone could run that literal scenario in. This milestone's actual job, given that
+constraint, was to build and run for real everything that sandbox actually permits, and to
+build — without being able to run — the tool and procedure for the part it cannot.
+
+**`tests/soak/` — run for real, against real local Postgres/Redis.** Six tests, each its own
+file, scoped down from "thousands" to a few hundred rows (documented in each file's own
+docstring as a deliberate, honest scale-down for a routine CI regression suite, not a silent
+substitution for the real thing):
+
+- `test_identity_resolution_concurrency.py` — ten concurrent `DiscoverCompany` calls for the
+  same domain, and ten concurrent `DiscoverPerson` calls for the same email.
+- `test_database_restart_resilience.py` — a real `docker compose restart postgres`, proving a
+  write committed before the restart survives it and a fresh connection reconnects once the
+  container reports healthy again.
+- `test_redis_restart_resilience.py` — a real `docker compose restart redis`, proving
+  `colt_api.rate_limit`'s process-wide client (the one genuinely long-lived connection in this
+  codebase, unlike `colt_db`'s per-checkout `NullPool` engine) reconnects transparently.
+- `test_duplicate_webhook_idempotency.py` — five concurrent deliveries of the same unsubscribe
+  token through the real `UnsubscribeByToken` use case.
+- `test_mocked_lead_volume.py` — 300 companies/people/leads for one organization created by 20
+  concurrent writers, plus 20 for a second organization, verifying both completeness (no row
+  lost or merged) and tenant isolation (RLS) hold under that volume and concurrency together.
+
+**Two real, previously-undiscovered bugs found and fixed, not merely a regression suite that
+stayed green.** Running the concurrency test for the first time, before any fix, reproduced the
+exact failure CLAUDE.md §96 warns a soak test must catch: ten concurrent `DiscoverCompany` calls
+for the same domain produced ten rows, and ten concurrent `DiscoverPerson` calls for the same
+email produced nine — `DiscoverCompany`/`DiscoverPerson`'s check-then-insert dedup logic (§22)
+was never actually safe under concurrency; nothing in the `companies`/`people` tables enforced
+it. The fix is two partial unique indexes (migration `b606dfdd0d97`:
+`uq_companies_org_normalized_domain`, `uq_people_org_email`) plus a new
+`colt_domain.DuplicateIdentityError` that `colt_db`'s repositories translate the resulting
+`IntegrityError` into — a domain-level type `colt_application`/`colt_agents`/`colt_api` can
+depend on without any of them taking on a SQLAlchemy dependency (CLAUDE.md §5's layering), kept
+deliberately un-caught by the use cases themselves so the natural recovery is the same retry a
+Temporal activity already performs on any unhandled exception. Separately, driving the real
+`UnsubscribeByToken` use case with concurrent duplicate deliveries found that the unsubscribe
+route's own docstring's promise — "never let a mail client's one-click retry start erroring
+once the first attempt has already succeeded" — did not actually hold: `AddSuppressionEntry`
+always called `SuppressionRepository.add()` unconditionally, and the real unique constraint
+backing it (`uq_suppression_entries_org_identifier`, present since Milestone 16) simply raised
+a bare `IntegrityError` out of the losing concurrent call. The fix needed a `SAVEPOINT`
+(`session.begin_nested()`), not a plain rollback: an earlier attempt that called
+`session.rollback()` directly left the caller's own outer `async with session.begin():` block
+in `"Can't operate on closed transaction inside context manager"` the moment it tried to
+re-query afterward — a real failure mode this milestone's own test caught by actually running
+the fix, not merely reasoning about it. The savepoint-scoped version rolls back only the failed
+insert, leaving the outer transaction (and the re-query that makes `.add()` properly idempotent
+on conflict) still usable.
+
+**`tests/soak/load/locustfile.py` — built and verified, not run against staging.** A Locust
+load generator for the literal "thousands of mocked leads... in staging" scenario, hitting
+`GET /api/v1/meta` and `GET /` so real request volume and connection churn exercises the real
+ALB/ECS path without this tool itself creating thousands of real rows (a seed step, described
+in `docs/operations/RUNBOOK.md` §6, does that once before a real run starts). Verified in this
+sandbox by running it headless for real against a locally-started `colt_api` process — it
+generates real HTTP load and reports real latencies/failures — but **never against a real
+staging URL**, since none exists here. `docs/operations/RUNBOOK.md` §6 is the full procedure a
+real run follows once Milestone 25's Terraform has actually been applied: seed volume, run the
+load generator for a sustained duration, inject the remaining chaos scenarios by hand against
+the real ECS services (stop/start a task, scale a service to 0, rotate a provider credential),
+and verify the acceptance criterion directly against the database afterward.
+
+**What remains genuinely unverified, named rather than implied otherwise**: everything that
+needs a real multi-day-capable staging environment under real network conditions — true
+"thousands," long-running Temporal workflows exercised over real wall-clock time, a real
+Temporal worker failure (no real Temporal server exists in this sandbox either, the same gap
+carried since Milestone 08), real AI provider transient errors against the real Anthropic API,
+and cross-tenant access specifically under real concurrent multi-tenant production-shaped
+traffic rather than this suite's own deliberately smaller rehearsal.

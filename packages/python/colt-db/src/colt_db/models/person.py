@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -22,6 +22,17 @@ class PersonModel(IdentityMixin, TimestampMixin, Base):
         CheckConstraint(
             f"email_status IS NULL OR email_status IN {_VALID_EMAIL_STATUSES}",
             name="valid_email_status",
+        ),
+        # Milestone 27: `DiscoverPerson`'s check-then-insert dedup is otherwise a real race
+        # under concurrency, the same finding as `CompanyModel.normalized_domain`'s own index
+        # above. Partial because `email` is nullable and multiple people with no known email
+        # must coexist.
+        Index(
+            "uq_people_org_email",
+            "organization_id",
+            "email",
+            unique=True,
+            postgresql_where=text("email IS NOT NULL"),
         ),
     )
 

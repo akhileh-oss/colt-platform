@@ -4,6 +4,142 @@
  */
 
 export interface paths {
+    "/api/v1/analytics/agent-cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cost and token usage per agent */
+        get: operations["get_agent_cost_api_v1_analytics_agent_cost_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/channel-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which channels produce commercial outcomes */
+        get: operations["get_channel_performance_api_v1_analytics_channel_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lead counts per funnel stage */
+        get: operations["get_funnel_api_v1_analytics_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/icp-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which segments (by company industry) produce commercial outcomes */
+        get: operations["get_icp_performance_api_v1_analytics_icp_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/message-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which message variants and personas produce commercial outcomes */
+        get: operations["get_message_performance_api_v1_analytics_message_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/model-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Success rate and average cost per model */
+        get: operations["get_model_performance_api_v1_analytics_model_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/revenue-outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Closed-won revenue grouped by source */
+        get: operations["get_revenue_outcomes_api_v1_analytics_revenue_outcomes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/trigger-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which signals produce commercial outcomes */
+        get: operations["get_trigger_performance_api_v1_analytics_trigger_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns": {
         parameters: {
             query?: never;
@@ -418,6 +554,26 @@ export interface components {
             /** Step Order */
             step_order: number;
         };
+        /** AgentCostListResponse */
+        AgentCostListResponse: {
+            /** Rows */
+            rows: components["schemas"]["AgentCostResponse"][];
+        };
+        /** AgentCostResponse */
+        AgentCostResponse: {
+            /** Agent Name */
+            agent_name: string;
+            /** Run Count */
+            run_count: number;
+            /** Total Cost Usd */
+            total_cost_usd: number;
+            /** Total Input Tokens */
+            total_input_tokens: number;
+            /** Total Output Tokens */
+            total_output_tokens: number;
+            /** Total Tool Tokens */
+            total_tool_tokens: number;
+        };
         /** AssignOpportunityOwnerRequest */
         AssignOpportunityOwnerRequest: {
             /**
@@ -486,6 +642,26 @@ export interface components {
          * @enum {string}
          */
         CampaignStatus: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED";
+        /** ChannelPerformanceListResponse */
+        ChannelPerformanceListResponse: {
+            /** Rows */
+            rows: components["schemas"]["ChannelPerformanceResponse"][];
+        };
+        /** ChannelPerformanceResponse */
+        ChannelPerformanceResponse: {
+            /** Channel */
+            channel: string;
+            /** Conversation Count */
+            conversation_count: number;
+            /** Message Count */
+            message_count: number;
+            /** Positive Count */
+            positive_count: number;
+            /** Positive Rate */
+            positive_rate: number;
+            /** Sent Count */
+            sent_count: number;
+        };
         /** CreateCampaignRequest */
         CreateCampaignRequest: {
             /** Approval Policy */
@@ -555,6 +731,42 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
         };
+        /** FunnelListResponse */
+        FunnelListResponse: {
+            /** Stages */
+            stages: components["schemas"]["FunnelResponse"][];
+        };
+        /** FunnelResponse */
+        FunnelResponse: {
+            /** Count */
+            count: number;
+            status: components["schemas"]["LeadStatus"];
+        };
+        /** IcpPerformanceListResponse */
+        IcpPerformanceListResponse: {
+            /** Rows */
+            rows: components["schemas"]["IcpPerformanceResponse"][];
+        };
+        /** IcpPerformanceResponse */
+        IcpPerformanceResponse: {
+            /** Company Count */
+            company_count: number;
+            /** Industry */
+            industry: string;
+            /** Lead Count */
+            lead_count: number;
+            /** Qualified Lead Count */
+            qualified_lead_count: number;
+            /** Won Company Count */
+            won_company_count: number;
+            /** Won Revenue */
+            won_revenue: number;
+        };
+        /**
+         * LeadStatus
+         * @enum {string}
+         */
+        LeadStatus: "NEW" | "DISCOVERED" | "ENRICHING" | "RESEARCHED" | "QUALIFIED" | "PERSONALIZED" | "PENDING_APPROVAL" | "READY" | "CONTACTED" | "ENGAGED" | "NOT_QUALIFIED" | "NOT_INTERESTED" | "UNSUBSCRIBED" | "SUPPRESSED" | "NURTURE" | "CONVERTED";
         /** LivenessResponse */
         LivenessResponse: {
             /**
@@ -572,6 +784,24 @@ export interface components {
         MessageListResponse: {
             /** Messages */
             messages: components["schemas"]["MessageResponse"][];
+        };
+        /** MessagePerformanceListResponse */
+        MessagePerformanceListResponse: {
+            /** Rows */
+            rows: components["schemas"]["MessagePerformanceResponse"][];
+        };
+        /** MessagePerformanceResponse */
+        MessagePerformanceResponse: {
+            /** Approved Count */
+            approved_count: number;
+            /** Drafted Count */
+            drafted_count: number;
+            /** Persona */
+            persona: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Sent Count */
+            sent_count: number;
         };
         /**
          * MessageResponse
@@ -634,6 +864,26 @@ export interface components {
              * @description Running API version.
              */
             version: string;
+        };
+        /** ModelPerformanceListResponse */
+        ModelPerformanceListResponse: {
+            /** Rows */
+            rows: components["schemas"]["ModelPerformanceResponse"][];
+        };
+        /** ModelPerformanceResponse */
+        ModelPerformanceResponse: {
+            /** Average Cost Usd */
+            average_cost_usd: number | null;
+            /** Completed Count */
+            completed_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Model Name */
+            model_name: string;
+            /** Run Count */
+            run_count: number;
+            /** Success Rate */
+            success_rate: number;
         };
         /** OpportunityListResponse */
         OpportunityListResponse: {
@@ -762,6 +1012,24 @@ export interface components {
             /** Total Value */
             total_value: number;
         };
+        /** RevenueOutcomeListResponse */
+        RevenueOutcomeListResponse: {
+            /** Rows */
+            rows: components["schemas"]["RevenueOutcomeResponse"][];
+        };
+        /** RevenueOutcomeResponse */
+        RevenueOutcomeResponse: {
+            /** Currency */
+            currency: string | null;
+            /** Includes Estimate */
+            includes_estimate: boolean;
+            /** Opportunity Count */
+            opportunity_count: number;
+            /** Source */
+            source: string;
+            /** Total Value */
+            total_value: number;
+        };
         /**
          * Role
          * @description The minimum roles CLAUDE.md §26.2 requires.
@@ -838,6 +1106,24 @@ export interface components {
         TransitionOpportunityStageRequest: {
             target_stage: components["schemas"]["PipelineStage"];
         };
+        /** TriggerPerformanceListResponse */
+        TriggerPerformanceListResponse: {
+            /** Rows */
+            rows: components["schemas"]["TriggerPerformanceResponse"][];
+        };
+        /** TriggerPerformanceResponse */
+        TriggerPerformanceResponse: {
+            /** Average Confidence */
+            average_confidence: number | null;
+            /** Company Count */
+            company_count: number;
+            /** Signal Count */
+            signal_count: number;
+            /** Signal Type */
+            signal_type: string;
+            /** Won Company Count */
+            won_company_count: number;
+        };
         /**
          * UserStatus
          * @enum {string}
@@ -866,6 +1152,310 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_agent_cost_api_v1_analytics_agent_cost_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentCostListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_channel_performance_api_v1_analytics_channel_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelPerformanceListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_funnel_api_v1_analytics_funnel_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunnelListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_icp_performance_api_v1_analytics_icp_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IcpPerformanceListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_message_performance_api_v1_analytics_message_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagePerformanceListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_model_performance_api_v1_analytics_model_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelPerformanceListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_revenue_outcomes_api_v1_analytics_revenue_outcomes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueOutcomeListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_trigger_performance_api_v1_analytics_trigger_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriggerPerformanceListResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_campaigns_api_v1_campaigns_get: {
         parameters: {
             query?: never;

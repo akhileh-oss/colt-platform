@@ -155,5 +155,28 @@ revenue_attribution.summarize_revenue_by_source` are pure, stateless aggregation
 backing the pipeline dashboard and closed-won revenue attribution — grouped by `source`, this
 milestone's own documented design call for a Build item CLAUDE.md names without a mechanism.
 
+Milestone 22 (CLAUDE.md §68) adds eight read-only report modules — `funnel`, `icp_performance`,
+`trigger_performance`, `message_performance`, `channel_performance`, `agent_cost`,
+`model_performance` (plus Milestone 21's own `revenue_attribution`, reused unchanged) — each a
+pure `summarize_*(rows...) -> list[SomeRow]` function, the same shape `signals.rank_signal`
+already establishes: never persisted, always reproducible from the rows passed in. Three of
+CLAUDE.md's named dimensions have no stored field anywhere in this codebase, so this package
+makes three documented proxy calls: `Company.industry` stands in for "segment" (`icp_
+performance.py`), `Message.prompt_version` for "message variant," and `Person.seniority`
+(resolved through `Lead.person_id`) for "persona" — the latter two folded into one
+`message_performance.py` module since CLAUDE.md's acceptance criterion names "personas" with no
+dedicated Build item for it.
+
+Each new analytics `Protocol` lives in its own `ports/analytics.py` — a `list_all()`-only reader
+per entity (`LeadAnalyticsReader`, `CompanyAnalyticsReader`, etc.) — rather than adding
+`list_all()` to the existing `LeadRepository`/`CompanyRepository`/etc. ports. The first attempt
+did widen those existing ports directly; because `Protocol` conformance is structural, every
+other use case's `Fake*Repository` test double across the codebase immediately stopped
+satisfying its own constructor's `Protocol` type the moment that `Protocol` gained a method the
+fake didn't implement, breaking mypy in over twenty unrelated test files. **Never widen an
+existing, widely-depended-on `Protocol` for one new, narrow need — define a new, separate
+`Protocol` instead**, the same concrete class satisfying both without either ever touching the
+other.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

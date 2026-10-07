@@ -1,10 +1,15 @@
 """Use cases and application services coordinating domain objects and ports."""
 
+from colt_application.agent_cost import AgentCostRow, summarize_agent_cost
 from colt_application.brand_voice import DEFAULT_BRAND_VOICE, get_brand_voice
 from colt_application.campaign_state import (
     CAMPAIGN_TRANSITIONS,
     can_transition,
     validate_campaign_definition,
+)
+from colt_application.channel_performance import (
+    ChannelPerformanceRow,
+    summarize_channel_performance,
 )
 from colt_application.errors import (
     ApplicationError,
@@ -17,7 +22,14 @@ from colt_application.errors import (
     OrganizationContextError,
     PolicyDeniedError,
 )
+from colt_application.funnel import FunnelStageSummary, summarize_funnel
+from colt_application.icp_performance import IcpPerformanceRow, summarize_icp_performance
 from colt_application.identity import DEFAULT_NAME_MATCH_CONFIDENCE_THRESHOLD
+from colt_application.message_performance import (
+    MessagePerformanceRow,
+    summarize_message_performance,
+)
+from colt_application.model_performance import ModelPerformanceRow, summarize_model_performance
 from colt_application.opportunity_state import OPPORTUNITY_TRANSITIONS, can_transition_stage
 from colt_application.pipeline_summary import PipelineStageSummary, summarize_pipeline
 from colt_application.reply_classification import Urgency, determine_conversation_transition
@@ -41,6 +53,10 @@ from colt_application.signals import (
     SIGNAL_TYPE_WEIGHTS,
     STALE_SIGNAL_DECAY_FACTOR,
     rank_signal,
+)
+from colt_application.trigger_performance import (
+    TriggerPerformanceRow,
+    summarize_trigger_performance,
 )
 from colt_application.use_cases.add_sequence_step import AddSequenceStep
 from colt_application.use_cases.add_suppression_entry import AddSuppressionEntry
@@ -101,9 +117,11 @@ __all__ = [
     "STALE_SIGNAL_DECAY_FACTOR",
     "AddSequenceStep",
     "AddSuppressionEntry",
+    "AgentCostRow",
     "ApplicationError",
     "AssignOpportunityOwner",
     "CampaignValidationError",
+    "ChannelPerformanceRow",
     "CreateCampaign",
     "CreateOrUpdateOpportunity",
     "DecideMessageApproval",
@@ -112,8 +130,10 @@ __all__ = [
     "DraftMessage",
     "EnrichCompany",
     "EnrichPerson",
+    "FunnelStageSummary",
     "GetCampaign",
     "GetLead",
+    "IcpPerformanceRow",
     "InvalidApprovalTransitionError",
     "InvalidCampaignTransitionError",
     "InvalidOpportunityTransitionError",
@@ -121,7 +141,9 @@ __all__ = [
     "ListEvidenceForLead",
     "ListMessages",
     "ListSequenceSteps",
+    "MessagePerformanceRow",
     "MessageValidationError",
+    "ModelPerformanceRow",
     "NotFoundError",
     "OpportunityUpsertResult",
     "OrganizationContext",
@@ -142,6 +164,7 @@ __all__ = [
     "SelectPersonalizationEvidence",
     "SendMessage",
     "TransitionOpportunityStage",
+    "TriggerPerformanceRow",
     "UnsubscribeByToken",
     "Urgency",
     "ValidateCampaign",
@@ -155,7 +178,14 @@ __all__ = [
     "determine_verification_status",
     "get_brand_voice",
     "rank_signal",
+    "summarize_agent_cost",
+    "summarize_channel_performance",
+    "summarize_funnel",
+    "summarize_icp_performance",
+    "summarize_message_performance",
+    "summarize_model_performance",
     "summarize_pipeline",
     "summarize_revenue_by_source",
+    "summarize_trigger_performance",
     "validate_campaign_definition",
 ]

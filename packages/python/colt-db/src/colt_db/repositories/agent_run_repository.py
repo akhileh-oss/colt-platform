@@ -90,6 +90,14 @@ class SqlAlchemyAgentRunRepository(TenantScopedRepository):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return agent_run_to_domain(model) if model is not None else None
 
+    async def list_all(self) -> list[AgentRun]:
+        """Every agent run in this organization — the agent-cost/model-performance analytics
+        read models (Milestone 22) group over this by `agent_name`/`model_name`. No prior
+        milestone's Build list needed a bulk read of this table."""
+        stmt = self._select_scoped(AgentRunModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [agent_run_to_domain(model) for model in models]
+
     async def _get_model(self, run_id: UUID) -> AgentRunModel:
         stmt = self._select_scoped(AgentRunModel).where(AgentRunModel.id == run_id)
         model = (await self._session.execute(stmt)).scalar_one_or_none()

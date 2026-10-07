@@ -55,6 +55,14 @@ responds `204` whether or not the token resolves, the standard unsubscribe-link 
 (never confirm or deny a specific id to an unauthenticated caller, and never let a mail client's
 one-click retry start erroring once the first attempt already succeeded).
 
+`routers/v1/analytics.py` (CLAUDE.md §68, Milestone 22) is eight read-only `GET` routes — one per
+Analytics + Learning Loop report (`funnel`, `icp-performance`, `trigger-performance`, `message-
+performance`, `channel-performance`, `agent-cost`, `model-performance`, `revenue-outcomes`) —
+all gated by a single new `ANALYTICS_READ` permission. Each route constructs the
+`SqlAlchemy*Repository`s its report needs, reads every row with that repository's `list_all()`,
+and hands the lists straight to the matching `colt_application.summarize_*` function; no route
+here ever mutates anything or touches `colt_db` models directly.
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

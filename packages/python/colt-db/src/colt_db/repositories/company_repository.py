@@ -78,6 +78,13 @@ class SqlAlchemyCompanyRepository(TenantScopedRepository):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return company_to_domain(model) if model is not None else None
 
+    async def list_all(self) -> list[Company]:
+        """Every company in this organization — the ICP-performance analytics read model
+        (Milestone 22) groups over this, since there is no stored "ICP segment" to filter by."""
+        stmt = self._select_scoped(CompanyModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [company_to_domain(model) for model in models]
+
     async def update(self, company_id: UUID, **fields: Any) -> Company:
         """Set only the given fields; a field omitted (or passed `None`) is left unchanged —
         `EnrichCompany` (Milestone 11) only ever passes fields a provider actually returned, so

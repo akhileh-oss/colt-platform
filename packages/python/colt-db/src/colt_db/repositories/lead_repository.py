@@ -50,3 +50,11 @@ class SqlAlchemyLeadRepository(TenantScopedRepository):
         await self._session.flush()
         await self._session.refresh(model)
         return lead_to_domain(model)
+
+    async def list_all(self) -> list[Lead]:
+        """Every lead in this organization — the funnel/ICP-performance analytics read model
+        (Milestone 22) computes over this, not a filtered query, since the funnel itself is
+        "how many leads are at each status."""
+        stmt = self._select_scoped(LeadModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [lead_to_domain(model) for model in models]

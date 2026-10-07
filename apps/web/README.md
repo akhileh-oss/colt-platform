@@ -18,16 +18,20 @@ renders an honest placeholder rather than fabricated data.
 
 ## Status
 
-Every route in the primary nav renders. The dashboard's system health panel (real data from the
-`/live`/`/ready` probes, Milestone 02) and the Campaigns page (Milestone 14 — create, validate,
-pause, resume, list, and manage sequence steps; Milestone 15 adds a list of each campaign's
-drafted messages; Milestone 16 makes the Approve/Reject buttons on each `PENDING` message real,
-through the typed `@colt/api-client`) are backed by real data; every other panel and feature
-page is an explicit "not built yet," since there is no lead data until later milestones land
-(17–22). The Campaigns page cannot be exercised in a live browser session in this environment —
-there is no login flow yet, so every request 401s with no real bearer token to attach — but it
-is type-checked against the real generated OpenAPI schema, and the same request shapes are
-proven over HTTP by `apps/api/tests/test_colt_api_campaigns.py`.
+Every route in the primary nav renders, and every panel is now backed by real data through the
+typed `@colt/api-client`. The dashboard's system health panel (Milestone 02) reads the real
+`/live`/`/ready` probes; every other dashboard panel (Milestone 22 — funnel, ICP performance,
+trigger performance, message performance, channel performance, revenue outcomes, agent cost,
+model performance) reads the Analytics + Learning Loop's REST surface. The Campaigns page
+(Milestone 14 — create, validate, pause, resume, list, and manage sequence steps; Milestone 15
+adds a list of each campaign's drafted messages; Milestone 16 makes the Approve/Reject buttons on
+each `PENDING` message real) and the Opportunities page (Milestone 21 — pipeline summary, revenue
+attribution, per-opportunity stage transition and owner assignment) are the other two real,
+DB-backed pages. None of these pages can be exercised in a live browser session in this
+environment — there is no login flow yet, so every request 401s with no real bearer token to
+attach — but each is type-checked against the real generated OpenAPI schema, and the same request
+shapes are proven over HTTP by the matching `apps/api` test module (e.g.
+`apps/api/tests/test_colt_api_campaigns.py`).
 
 ## Commands
 

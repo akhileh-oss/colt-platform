@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 21 — Opportunity Engine: complete.**
+**Milestone 22 — Analytics + Learning Loop: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -274,6 +274,30 @@ hermetically only; the deterministic dedup/state-machine logic the acceptance cr
 turns on — two positive triggers for the same company producing exactly one `Opportunity` row —
 is proven against real Postgres.
 
+Milestone 22 builds the Analytics + Learning Loop (`CLAUDE.md` §68): eight read-only reports
+(funnel, ICP performance, trigger performance, message performance, channel performance, agent
+cost, model performance, revenue outcomes) answering the milestone's own acceptance
+criterion — "what segments, signals, personas, channels and message variants produce commercial
+outcomes." Every report is a pure function (`colt_application.summarize_*`) over rows a
+repository's new `list_all()` method reads back, never a persisted column, the same
+`signals.rank_signal`/`revenue_attribution` pattern this package already establishes. None of
+CLAUDE.md's named dimensions has a stored field for "segment," "message variant," or "persona,"
+so this milestone makes three documented proxy calls: `Company.industry` stands in for segment
+(ICP performance), `Message.prompt_version` for message variant, and `Person.seniority`
+(resolved through `Lead.person_id`) for persona — folded into one `message_performance` module
+since the acceptance criterion names "personas" without a dedicated Build item for it. Every new
+analytics `Protocol` lives in its own narrow `colt_application/ports/analytics.py` (a
+`list_all()`-only reader per entity) rather than widening the existing, widely-depended-on
+`LeadRepository`/`CompanyRepository`/etc. ports — adding a method to those would have broken
+every other use case's `Fake*Repository` test double across the codebase, since a concrete class
+satisfies a `Protocol` structurally only when it has every method that `Protocol` declares. The
+dashboard (`apps/web`) renders all eight reports as real, typed panels against the generated
+OpenAPI schema. Every `summarize_*` function has its own hermetic unit tests; a real-Postgres
+integration test (`tests/integration/test_analytics.py`) seeds a winning company (its own
+industry, signal type, message variant/persona, and channel) against a non-converting one and
+proves each report surfaces the winner's commercial outcome while the other stays at zero — the
+acceptance criterion, literally exercised.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -298,7 +322,8 @@ is proven against real Postgres.
 | 19        | Reply intelligence                    | ✅ Complete (see caveat above) |
 | 20        | CRM integration                       | ✅ Complete                    |
 | 21        | Opportunity engine                    | ✅ Complete (see caveat above) |
-| 22–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 22        | Analytics + learning loop             | ✅ Complete                    |
+| 23–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

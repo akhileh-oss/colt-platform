@@ -103,8 +103,8 @@ test-e2e: ## Run end-to-end browser tests (starts the API and web server itself)
 test-workflows: ## Run Temporal workflow tests (in-process time-skipping environment)
 	$(UV) run pytest -m workflows
 
-eval: ## Run AI evaluation suites
-	@echo "NOT AVAILABLE — the AI evaluation system is delivered in Milestone 23."; exit 1
+eval: ## Run AI evaluation suites (golden datasets, regression/structured-output/evidence-grounding checks)
+	$(UV) run pytest -m evals
 
 
 # -----------------------------------------------------------------------------

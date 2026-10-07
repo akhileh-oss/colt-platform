@@ -654,3 +654,75 @@ type, message variant/persona, and channel — against a second company that nev
 proves every report surfaces the winner's segment/signal/variant/persona/channel with a nonzero
 commercial-outcome metric while the non-converting company's dimension stays at zero: the
 acceptance criterion, literally exercised against real rows.
+
+## 18. AI evaluation system (Milestone 23)
+
+CLAUDE.md §45.5/§46 give the Build list (golden datasets, regression evaluations, structured-
+output validation, evidence-grounding tests, prompt comparison reports, model comparison
+reports, cost/latency measurements) and a minimum acceptance list ("no regression in schema
+validity... no unacceptable cost increase...") without a mechanism for any of it — the same
+posture every other milestone's own Build list gets, and the same response: this milestone
+documents and builds the mechanism.
+
+The reusable half lives in a new `colt_agents.evals` module — `colt_agents`, not a new top-level
+package, since CLAUDE.md's repository structure (§4) names no `colt-evals` package and this
+mechanism is nothing but analysis of an agent's own `AgentRuntime` behavior:
+
+- `EvalCaseOutcome`/`EvalReport` (`report.py`) — a golden suite's own verdict per case, and the
+  whole suite's pass rate, as a `pydantic.BaseModel` (not a plain dataclass, the distinction
+  `colt_application`'s own `Row` dataclasses draw from pydantic domain entities) specifically so
+  it round-trips through JSON: a report is written to disk as a stored baseline and read back by
+  a later run, not just held for one test's own assertions.
+- `average_latency_seconds`/`build_cost_report`/`build_model_report` (`report.py`) — cost and
+  latency are never a new measurement invented here: they reuse Milestone 22's own
+  `summarize_agent_cost`/`summarize_model_performance` directly over the real `AgentRun` rows a
+  golden suite's own run produces. An eval run is itself a legitimate source of `AgentRun` rows,
+  no different from a production one.
+- `check_evidence_grounding` (`grounding.py`) — generic over any citation-producing agent: given
+  the IDs an output actually cited and the IDs a run actually recorded (e.g. every
+  `Evidence.id` a real `record_evidence` tool call produced), a cited ID absent from the
+  recorded set is a fabricated citation — not "missing evidence" (`DossierClaim`'s own pydantic
+  validator already makes an evidence-less `FACT` claim structurally impossible), a hallucinated
+  one the schema cannot catch on its own.
+- `compare_against_baseline` (`regression.py`) — a `current` `EvalReport` diffed against a
+  `baseline` one stored as the golden suite's own checked-in JSON fixture
+  (`tests/evals/baselines/*.json`): a case that passed in the baseline and now fails is a
+  regression; a brand-new case cannot regress (it has nothing to regress from).
+- `compare_reports` (`comparison.py`) — the one function serving both the "prompt comparison
+  reports" and "model comparison reports" Build items: `ComparisonDimension` names which axis
+  changed (`prompt_version` or `model_name`) between two reports of the same golden suite, and
+  the comparison itself — pass-rate delta, cost delta, regressions — is identical either way.
+
+`tests/evals/` holds the actual golden suites driving this mechanism against three agents
+through the real `AgentRuntime`, hermetically (the same fake-repository-plus-faked-
+`.messages.create` pattern every other agent's own test file in `colt-agents` already
+establishes — no real Anthropic key exists in this environment, the Milestone 08 caveat carried
+into every agent-dependent milestone since):
+
+- `test_scoring_agent_evals.py` — structured-output validation (a response missing a required
+  field must raise `AgentOutputValidationError` and be scored as a caught failure, not silently
+  accepted), scoring consistency (the same input run twice must produce the same
+  `overall_score`), and the regression gate against `baselines/scoring_agent.json`.
+- `test_research_agent_evals.py` — evidence grounding: one case cites real, recorded evidence
+  (grounded); a second deliberately cites a fabricated id the run never recorded (not grounded),
+  proving `check_evidence_grounding` catches exactly the hallucination the dossier schema's own
+  validator cannot.
+- `test_reply_intelligence_agent_evals.py` — classification accuracy, checking the
+  conversation's actual, persisted state (not the model's raw `recommended_state_transition`)
+  against each case's expected label — including the case where `HIGH` urgency always forces
+  `HUMAN_HANDOFF` regardless of what the model recommended (§12.10's deterministic override,
+  "model judges, code decides" again).
+- `test_prompt_and_model_comparison.py` — reruns `ScoringAgent`'s own golden suite twice for
+  each Build item. Model comparison: two different `AnthropicSettings.model_fast` overrides
+  (`ScoringAgent` routes through `ModelClass.FAST`) with identical scripted responses — no real
+  model call happens, but the cost delta is real (`colt_ai.pricing.estimate_cost_usd` prices
+  both models for real). Prompt comparison: two `prompt_version` labels with a deliberately,
+  documented-ly simulated consistency regression between them (there is no real prompt text to
+  change a model's behavior in this environment) — proving `compare_reports` genuinely catches
+  the regression the simulation introduces, even though the regression itself is test-controlled
+  rather than a real prompt's own doing.
+
+`make eval` (`pytest -m evals`) runs the whole suite — CLAUDE.md §68's milestone acceptance
+criterion, "prompt/model changes can be evaluated before release," exercised literally: every
+comparison and regression check above runs against real `AgentRuntime` executions, real cost
+pricing, and a real stored baseline, never a synthetic stand-in for the mechanism it proves.

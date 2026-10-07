@@ -68,6 +68,23 @@ is the only path into `CreateOrUpdateOpportunity`'s deterministic dedup check �
 opportunity per company — so the model deciding "yes, create one" can never itself create a
 duplicate.
 
+`colt_agents.evals` (CLAUDE.md §45.5, §46, Milestone 23) is the AI evaluation system's reusable
+mechanism, not a new agent: `EvalReport`/`EvalCaseOutcome` (JSON-serializable, for a stored
+baseline), `check_evidence_grounding` (a cited reference id absent from what a run actually
+recorded is a fabricated citation — a hallucination mode no output schema's own validator can
+catch), `compare_against_baseline` (a case that passed in a stored baseline and now fails is a
+regression), and `compare_reports` (the one function serving both "prompt comparison reports"
+and "model comparison reports" — a `ComparisonDimension` names which axis changed between two
+runs of the same golden suite). Cost and latency are never a new measurement: `build_cost_
+report`/`build_model_report`/`average_latency_seconds` reuse Milestone 22's own
+`summarize_agent_cost`/`summarize_model_performance` directly over the real `AgentRun` rows a
+golden suite's own run produces — an eval run is itself a legitimate source of those rows. The
+golden suites themselves (`tests/evals/test_scoring_agent_evals.py`,
+`test_research_agent_evals.py`, `test_reply_intelligence_agent_evals.py`,
+`test_prompt_and_model_comparison.py`) live under `tests/evals/`, not here, driving this
+package's own `AgentRuntime` the same hermetic way every other agent test in this package
+already does.
+
 See [`docs/architecture/AGENT_ARCHITECTURE.md`](../../../docs/architecture/AGENT_ARCHITECTURE.md)
 for the full mechanism (permission filtering, persistence, redaction, the evidence pipeline),
 and [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how

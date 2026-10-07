@@ -1,0 +1,27 @@
+{
+  "agent_name": "scoring-agent",
+  "prompt_version": null,
+  "model_name": null,
+  "outcomes": [
+    {
+      "case_id": "high_fit_qualifies",
+      "passed": true,
+      "detail": "qualified=True"
+    },
+    {
+      "case_id": "low_fit_not_qualified",
+      "passed": true,
+      "detail": "qualified=False"
+    },
+    {
+      "case_id": "scoring_consistency",
+      "passed": true,
+      "detail": "0.6149999999999999 vs 0.6149999999999999"
+    },
+    {
+      "case_id": "malformed_output_is_rejected",
+      "passed": true,
+      "detail": "AgentOutputValidationError raised, as expected"
+    }
+  ]
+}

@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any, cast
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from colt_db.mappers import company_to_domain
 from colt_db.models.company import CompanyModel
 from colt_db.tenancy import TenantScopedRepository
-from colt_domain import Company
+from colt_domain import Company, DuplicateIdentityError
 
 
 class SqlAlchemyCompanyRepository(TenantScopedRepository):
@@ -46,7 +48,16 @@ class SqlAlchemyCompanyRepository(TenantScopedRepository):
             source_metadata=source_metadata or {},
         )
         self._session.add(model)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            if "uq_companies_org_normalized_domain" in str(exc.orig):
+                raise DuplicateIdentityError(
+                    f"A company with normalized_domain={normalized_domain!r} already exists "
+                    "in this organization (lost a concurrent insert race)."
+                ) from exc
+            raise
         await self._session.refresh(model)
         return company_to_domain(model)
 

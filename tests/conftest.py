@@ -8,6 +8,7 @@ Suite layout (CLAUDE.md §45):
 - ``tests/workflows``    Temporal workflow tests
 - ``tests/security``     security and tenant-isolation invariants
 - ``tests/evals``        AI evaluation suites
+- ``tests/soak``         volume/chaos resilience rehearsals (Milestone 27)
 
 Markers are declared in ``pyproject.toml``. Each suite directory applies its own marker
 automatically via the mapping below, so a suite can be selected with ``-m <marker>``.
@@ -43,6 +44,7 @@ _SUITE_MARKERS = {
     "workflows": "workflows",
     "security": "security",
     "evals": "evals",
+    "soak": "soak",
 }
 
 _TESTS_ROOT = Path(__file__).parent

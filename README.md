@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 26 — CI/CD + Release Engineering: complete.**
+**Milestone 27 — Staging Soak Test: complete (see caveat below).**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -429,6 +429,28 @@ runtime stage expects) all succeed. GitHub Actions' own runners pull from Docker
 this sandbox's shared-IP throttling, so the real containerized build is expected to succeed
 there; it is reported as unverified here rather than assumed passing.
 
+Milestone 27 builds the Staging Soak Test (`CLAUDE.md` §96, §68) against reality: this sandbox
+has no real deployed staging environment (Milestone 25's Terraform was never `apply`'d), so the
+literal acceptance criterion — "no data corruption, duplicate sends, cross-tenant access, or
+unrecoverable workflows" under thousands of mocked leads, worker/API restarts, DB/Redis
+failures, and provider throttling, run in staging — cannot be claimed here. What this milestone
+actually did: `tests/soak/` (`make test-soak`) runs real chaos and volume scenarios against
+real local Postgres/Redis at a smaller, CI-practical scale — identity-resolution concurrency,
+a real Postgres container restart, a real Redis container restart, duplicate unsubscribe-
+webhook delivery, and volume + tenant isolation under concurrent writes — and **found two real,
+previously-undiscovered concurrency bugs**: `DiscoverCompany`/`DiscoverPerson` could create
+duplicate `Company`/`Person` rows when two discoveries of the same domain/email raced each
+other (ten concurrent calls produced ten and nine duplicate rows respectively, reproduced
+before being fixed), and a duplicate unsubscribe-webhook delivery raised a raw, unhandled
+database error instead of the clean `204` the route's own docstring had always promised. Both
+are fixed for real: two new partial unique indexes plus a `colt_domain.DuplicateIdentityError`
+the `colt_db` repository layer translates database conflicts into, and a `SAVEPOINT`-based
+idempotent recovery in `SqlAlchemySuppressionRepository.add()`. `tests/soak/load/
+locustfile.py` is the tool for the literal "thousands... in staging" run — built, verified to
+generate real HTTP load against a real running API in this sandbox — but genuinely **not run
+against staging**, since no staging exists here; `docs/operations/RUNBOOK.md` §6 is the actual
+procedure for running it for real once Milestone 25's infrastructure is applied.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -458,7 +480,8 @@ there; it is reported as unverified here rather than assumed passing.
 | 24        | Security hardening                    | ✅ Complete                    |
 | 25        | Production infrastructure             | ✅ Complete (see caveat above) |
 | 26        | CI/CD + release engineering           | ✅ Complete (see caveat above) |
-| 27–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 27        | Staging soak test                     | ✅ Complete (see caveat above) |
+| 28–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

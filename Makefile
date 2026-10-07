@@ -13,7 +13,7 @@ PNPM ?= pnpm
 
 .PHONY: help install dev down logs health api api-client web worker migrate migration seed \
         format lint typecheck test test-unit test-integration test-e2e \
-        test-workflows eval security build check clean
+        test-workflows test-security test-soak eval security build check clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -91,7 +91,7 @@ typecheck: ## Type-check Python (mypy strict) and TypeScript
 test: test-unit ## Run the default test suite
 
 test-unit: ## Run unit tests (Python + TypeScript)
-	$(UV) run pytest -m "not integration and not e2e and not workflows and not evals and not security"
+	$(UV) run pytest -m "not integration and not e2e and not workflows and not evals and not security and not soak"
 	$(PNPM) run test
 
 test-integration: ## Run integration tests (requires `make dev` + `make migrate`)
@@ -105,6 +105,9 @@ test-workflows: ## Run Temporal workflow tests (in-process time-skipping environ
 
 test-security: ## Run the security regression suite (requires `make dev` + `make migrate`)
 	$(UV) run pytest -m security
+
+test-soak: ## Run the volume/chaos resilience rehearsal suite (requires `make dev` + `make migrate`; restarts local containers)
+	$(UV) run pytest -m soak
 
 eval: ## Run AI evaluation suites (golden datasets, regression/structured-output/evidence-grounding checks)
 	$(UV) run pytest -m evals

@@ -483,6 +483,20 @@ procedure for running it for real once Milestone 25's infrastructure is applied.
 | 27        | Staging soak test                     | ✅ Complete (see caveat above) |
 | 28–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
+**Oracle Cloud "Always Free" deployment** (not a `CLAUDE.md` milestone — a user-requested, $0/
+month alternative to Milestone 25's AWS infrastructure, for anyone who cannot carry AWS's
+recurring NAT Gateway/ALB/Fargate costs, none of which has a free tier at any usage level).
+`infrastructure/terraform/oracle/` + `infrastructure/environments/oracle-free/` provision one
+Always Free Ampere A1 instance (4 OCPU/24GB — the entire Always Free compute allowance) running
+the same `docker compose` stack Milestone 00's local dev already proves works, with a dedicated
+backed-up block volume, a reserved public IP, and Caddy for automatic HTTPS. The real trade for
+$0: one box, no managed multi-AZ failover — if it goes down, the app goes down until it's back.
+See [`docs/operations/ORACLE_FREE_TIER_DEPLOYMENT.md`](./docs/operations/ORACLE_FREE_TIER_DEPLOYMENT.md)
+for account setup, costs that are and aren't actually free, and the backup/restore procedure.
+This Terraform has been `fmt`/`validate`-checked, same as Milestone 25's AWS Terraform, but
+never `apply`'d against a real OCI tenancy in this sandbox (no OCI account exists here) — it is
+reported as unverified-by-apply rather than assumed working end-to-end.
+
 ---
 
 ## Requirements

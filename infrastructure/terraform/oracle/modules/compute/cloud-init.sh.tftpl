@@ -1,0 +1,141 @@
+#!/bin/bash
+# Oracle "Always Free" first-boot provisioning for the Colt production stack.
+#
+# Rendered once by Terraform (`templatefile`) and passed as this instance's cloud-init
+# user_data. Every `$$` below is a literal `$` meant for bash, doubled so Terraform's own
+# template engine doesn't try to interpolate it — only the dollar-brace tokens actually meant
+# as Terraform variables are single-dollar.
+set -euo pipefail
+exec > >(tee -a /var/log/colt-cloud-init.log) 2>&1
+
+echo "=== Colt provisioning: starting at $$(date -u) ==="
+
+# --- 1. Mount the dedicated data block volume -------------------------------------------------
+# OCI exposes a paravirtualized-attached volume at a stable /dev/oracleoci/oraclevdX symlink
+# (never a raw /dev/sdX path, which can shift across reboots or when volumes are reordered).
+DATA_DEVICE="${data_device}"
+for i in $$(seq 1 30); do
+  [ -e "$$DATA_DEVICE" ] && break
+  echo "Waiting for $$DATA_DEVICE to appear ($$i/30)..."
+  sleep 5
+done
+if [ ! -e "$$DATA_DEVICE" ]; then
+  echo "FATAL: $$DATA_DEVICE never appeared — is the block volume attached?" >&2
+  exit 1
+fi
+
+if ! blkid "$$DATA_DEVICE" >/dev/null 2>&1; then
+  echo "Formatting $$DATA_DEVICE (ext4) — first boot only."
+  mkfs.ext4 -F "$$DATA_DEVICE"
+fi
+
+mkdir -p /data
+DATA_UUID="$$(blkid -s UUID -o value "$$DATA_DEVICE")"
+if ! grep -q "$$DATA_UUID" /etc/fstab; then
+  echo "UUID=$$DATA_UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+fi
+mount -a
+
+# --- 2. Swap on the boot volume (safety margin; the data volume isn't guaranteed mounted
+#        this early in every boot ordering, the boot volume always is) ------------------------
+if [ ! -f /swapfile ]; then
+  fallocate -l ${swap_size_mb}M /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+fi
+swapon /swapfile 2>/dev/null || true
+if ! grep -q '/swapfile' /etc/fstab; then
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# --- 3. Docker Engine (official APT repo, not the convenience script) -------------------------
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+UBUNTU_CODENAME="$$(. /etc/os-release && echo "$$VERSION_CODENAME")"
+echo \
+  "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $$UBUNTU_CODENAME stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+usermod -aG docker ubuntu || true
+systemctl enable --now docker
+
+# --- 4. Caddy (official APT repo) — the only process with a public listener -------------------
+apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+  | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+  > /etc/apt/sources.list.d/caddy-stable.list
+apt-get update -y
+apt-get install -y caddy
+
+cat > /etc/caddy/Caddyfile <<'COLT_CADDYFILE_EOF'
+${caddyfile}
+COLT_CADDYFILE_EOF
+systemctl restart caddy
+
+# --- 5. The application stack itself -----------------------------------------------------------
+mkdir -p /data/colt/postgres /data/colt/redis /data/colt/minio /data/colt/keycloak /data/colt/keycloak-realm
+
+cat > /data/colt/docker-compose.yml <<'COLT_COMPOSE_EOF'
+${compose_file}
+COLT_COMPOSE_EOF
+
+cat > /data/colt/otel-collector-config.yaml <<'COLT_OTEL_EOF'
+${otel_config}
+COLT_OTEL_EOF
+
+cat > /data/colt/keycloak-realm/colt-realm.json <<'COLT_REALM_EOF'
+${keycloak_realm}
+COLT_REALM_EOF
+
+# Secrets written only here — in this instance's own metadata-sourced cloud-init, never
+# committed anywhere. No free-tier equivalent of AWS Secrets Manager exists on OCI's Always
+# Free tier (CLAUDE.md §7.2's "managed secrets service" is the thing the AWS environment uses
+# instead); this is the deliberate, documented trade-off for $0 (see
+# docs/operations/ORACLE_FREE_TIER_DEPLOYMENT.md).
+cat > /data/colt/.env <<'COLT_ENV_EOF'
+POSTGRES_PASSWORD=${postgres_password}
+REDIS_PASSWORD=${redis_password}
+MINIO_ROOT_USER=${minio_root_user}
+MINIO_ROOT_PASSWORD=${minio_root_password}
+KEYCLOAK_ADMIN_PASSWORD=${keycloak_admin_password}
+DOMAIN_NAME=${domain_name}
+API_IMAGE=${api_image}
+WEB_IMAGE=${web_image}
+WORKER_IMAGE=${worker_image}
+${env_file_extra}
+COLT_ENV_EOF
+chmod 600 /data/colt/.env
+
+cd /data/colt
+docker compose --env-file .env pull || echo "pull failed/partial — continuing with any already-cached images"
+docker compose --env-file .env up -d
+
+# --- 6. systemd unit so `systemctl status colt` / `journalctl -u colt` work, and so the stack
+#        is explicitly brought up again after any future reboot (Docker's own restart policies
+#        already recover from a crash or daemon restart; this covers the one-time `up -d`). ---
+cat > /etc/systemd/system/colt.service <<'COLT_UNIT_EOF'
+[Unit]
+Description=Colt production stack (docker compose)
+Requires=docker.service
+After=docker.service network-online.target data.mount
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/data/colt
+ExecStart=/usr/bin/docker compose --env-file .env up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file .env down
+
+[Install]
+WantedBy=multi-user.target
+COLT_UNIT_EOF
+systemctl daemon-reload
+systemctl enable colt.service
+
+echo "=== Colt provisioning: finished at $$(date -u) ==="

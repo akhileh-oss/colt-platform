@@ -63,6 +63,21 @@ all gated by a single new `ANALYTICS_READ` permission. Each route constructs the
 and hands the lists straight to the matching `colt_application.summarize_*` function; no route
 here ever mutates anything or touches `colt_db` models directly.
 
+`colt_api/rate_limit.py` (CLAUDE.md §37, §40, §79, Milestone 24) is a Redis-backed fixed-window
+rate limiter: `RateLimiter.check(key, limit=..., window_seconds=...)` raises `RateLimitedError`
+(429) once a key's count in the current window exceeds its limit, and `rate_limit(bucket_name,
+key_fn, *, limit, window_seconds=60)` wraps it as a `Depends(...)` any route can adopt. Today
+exactly one route adopts it: `unsubscribe.py`'s `POST /unsubscribe/{organization_id}/{message_id}`
+— the one deliberately unauthenticated route in this API, keyed by that URL pair rather than
+client IP. Every other §79 category (auth, AI, search, outbound) is either delegated elsewhere
+(Keycloak, Temporal workflows, `colt_policy.outbound`) or has no direct synchronous HTTP route
+yet, so there is nothing else for an HTTP-layer limiter to protect today.
+
+`campaigns.py`'s `validate_campaign`/`pause_campaign`/`resume_campaign` handlers (Milestone 24)
+now construct a `SqlAlchemyAuditLogRepository` and pass the caller's `actor_id` into
+`ValidateCampaign`/`PauseCampaign`/`ResumeCampaign`, closing the audit-logging gap CLAUDE.md §48
+named for campaign launch and pause (`colt_application`'s own README covers the use-case side).
+
 See [`docs/api/README.md`](../../docs/api/README.md) for the API contract, and
 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) for the request
 path.

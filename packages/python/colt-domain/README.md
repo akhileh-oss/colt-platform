@@ -24,5 +24,13 @@ labeled estimates" needs somewhere to record that distinction. `.with_owner()`/`
 join `.with_stage()` as the entity's mutation helpers, the same `model_copy`-returning shape as
 every other entity's own.
 
+`Campaign.name`, `Company.name`, `Person.full_name` (CLAUDE.md §40, Milestone 24) now reject a
+value past 300 characters, and `Message.subject` past 500 — each a `pydantic.Field(max_length=
+...)` matching its backing `colt_db` model's own `String(N)` column width exactly, so this layer
+never claims a looser bound than PostgreSQL actually enforces. `Company.description` and
+`Message.body` back onto unbounded `Text` columns with no DB-side cap to match, so they get
+their own deliberately tighter, documented caps instead (5,000 and 100,000 characters) —
+generous enough for any real use, never unbounded.
+
 See [`docs/architecture/ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) for how this
 package fits into the layering, and `CLAUDE.md` §5 for the layer rules it must obey.

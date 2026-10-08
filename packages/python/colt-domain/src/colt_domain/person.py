@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EmailStatus(StrEnum):
@@ -33,7 +33,9 @@ class Person(BaseModel):
     company_id: UUID
     first_name: str | None = None
     last_name: str | None = None
-    full_name: str
+    #: `max_length` (CLAUDE.md §40, Milestone 24), matching `PersonModel.full_name`'s own
+    #: `String(300)` column exactly.
+    full_name: str = Field(max_length=300)
     title: str | None = None
     seniority: str | None = None
     department: str | None = None

@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -97,7 +97,8 @@ async def _seed_lead_and_campaign(
         schedule={"timezone": "UTC"},
         limits={"max_sends_per_day": 50},
     )
-    campaign = await ValidateCampaign(campaigns)(campaign.id, now=NOW)
+    audit_logs = SqlAlchemyAuditLogRepository(session, org_id)
+    campaign = await ValidateCampaign(campaigns, audit_logs)(campaign.id, actor_id=uuid4(), now=NOW)
     assert campaign.status.value == "ACTIVE"
 
     add_sequence_step = AddSequenceStep(

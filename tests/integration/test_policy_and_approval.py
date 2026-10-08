@@ -99,7 +99,8 @@ async def _seed_ready_message(
         schedule={"timezone": "UTC"},
         limits=limits or {"max_sends_per_day": 50},
     )
-    campaign = await ValidateCampaign(campaigns)(campaign.id, now=NOW)
+    audit_logs = SqlAlchemyAuditLogRepository(session, org_id)
+    campaign = await ValidateCampaign(campaigns, audit_logs)(campaign.id, actor_id=uuid4(), now=NOW)
     assert campaign.status.value == "ACTIVE"
 
     evidence_repo = await SqlAlchemyEvidenceRepository.create(session, org_id)

@@ -10,6 +10,7 @@ dependencies = [
     "pyjwt[crypto]>=2.13",
     "opentelemetry-instrumentation-fastapi>=0.48b0",
     "temporalio>=1.9",
+    "redis>=5.0",
     "colt-config",
     "colt-domain",
     "colt-application",

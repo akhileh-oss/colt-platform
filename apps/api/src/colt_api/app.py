@@ -21,6 +21,7 @@ from colt_api.middleware import (
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from colt_api.rate_limit import close_redis_client, get_redis_client
 from colt_api.readiness import readiness_registry
 from colt_api.routers import health
 from colt_api.routers.v1 import router as v1
@@ -76,10 +77,22 @@ def _build_lifespan(
 
         readiness_registry.register("database", _database_ready)
 
+        redis_client = get_redis_client(settings)
+
+        async def _redis_ready() -> str | None:
+            try:
+                await redis_client.ping()
+            except Exception as exc:  # noqa: BLE001 - same reporting contract as _database_ready.
+                return f"{type(exc).__name__}: {exc}"
+            return None
+
+        readiness_registry.register("redis", _redis_ready)
+
         yield
 
         # Shutdown: stop accepting work, then release resources (CLAUDE.md §58).
         await engine.dispose()
+        await close_redis_client()
         readiness_registry.clear()
         logger.info("api stopping", extra={"operation": "shutdown"})
 

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Company(BaseModel):
@@ -16,7 +16,11 @@ class Company(BaseModel):
 
     id: UUID
     organization_id: UUID
-    name: str
+    #: `max_length` on `name` (CLAUDE.md §40, Milestone 24), matching `CompanyModel.name`'s own
+    #: `String(300)` column exactly. `description` backs onto an unbounded `Text` column, so its
+    #: own bound below is a deliberately tighter app-level cap, not a DB-matched one — a hostile
+    #: or malformed source document must never grow a single row without limit.
+    name: str = Field(max_length=300)
     domain: str | None = None
     normalized_domain: str | None = None
     industry: str | None = None
@@ -25,7 +29,7 @@ class Company(BaseModel):
     country: str | None = None
     region: str | None = None
     city: str | None = None
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5_000)
     website_url: str | None = None
     linkedin_url: str | None = None
     source_metadata: dict[str, Any] = {}

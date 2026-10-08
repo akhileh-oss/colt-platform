@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Message(BaseModel):
@@ -24,8 +24,12 @@ class Message(BaseModel):
     conversation_id: UUID | None = None
     sequence_step_id: UUID | None = None
     channel: str
-    subject: str | None = None
-    body: str
+    #: `max_length` on `subject`/`body` (CLAUDE.md §40, Milestone 24). `subject` matches
+    #: `MessageModel.subject`'s own `String(500)` column exactly. `body` backs onto an unbounded
+    #: `Text` column, so its own bound is a deliberately tighter app-level cap, not a DB-matched
+    #: one — generous enough for any real email, but never unbounded.
+    subject: str | None = Field(default=None, max_length=500)
+    body: str = Field(max_length=100_000)
     status: str = "DRAFT"
     approval_status: str = "PENDING"
     evidence_ids: list[UUID] = []

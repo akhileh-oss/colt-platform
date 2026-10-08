@@ -1,15 +1,16 @@
-"""`ValidateCampaign` (CLAUDE.md §10.9, Milestone 14)."""
+"""`ValidateCampaign` (CLAUDE.md §10.9, §48, Milestone 14, Milestone 24)."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
 from colt_application.errors import CampaignValidationError, InvalidCampaignTransitionError
 from colt_application.use_cases.validate_campaign import ValidateCampaign
-from colt_domain import Campaign, CampaignStatus
+from colt_domain import AuditLog, Campaign, CampaignStatus
 
 NOW = datetime.now(UTC)
 
@@ -36,6 +37,16 @@ class FakeCampaignRepository:
         return self.campaign
 
 
+class FakeAuditLogRepository:
+    def __init__(self) -> None:
+        self.recorded: list[AuditLog] = []
+
+    async def record(self, **kwargs: Any) -> AuditLog:
+        log = AuditLog(id=uuid4(), organization_id=uuid4(), created_at=NOW, **kwargs)
+        self.recorded.append(log)
+        return log
+
+
 def _draft_campaign(**overrides: object) -> Campaign:
     base: dict[str, object] = {
         "id": uuid4(),
@@ -57,35 +68,43 @@ def _draft_campaign(**overrides: object) -> Campaign:
 async def test_a_fully_configured_draft_campaign_becomes_active() -> None:
     campaign = _draft_campaign()
     campaigns = FakeCampaignRepository(campaign)
-    validate_campaign = ValidateCampaign(campaigns)
+    audit_logs = FakeAuditLogRepository()
+    validate_campaign = ValidateCampaign(campaigns, audit_logs)
+    actor_id = uuid4()
 
-    result = await validate_campaign(campaign.id, now=NOW)
+    result = await validate_campaign(campaign.id, actor_id=actor_id, now=NOW)
 
     assert result.status == CampaignStatus.ACTIVE
     assert campaigns.status_updates == [CampaignStatus.ACTIVE]
+    (log,) = audit_logs.recorded
+    assert log.action == "campaign_launched"
+    assert log.actor_id == actor_id
+    assert log.entity_id == campaign.id
 
 
 @pytest.mark.asyncio
 async def test_a_draft_campaign_missing_required_fields_stays_draft_and_raises() -> None:
     campaign = _draft_campaign(icp_definition={}, channels=[])
     campaigns = FakeCampaignRepository(campaign)
-    validate_campaign = ValidateCampaign(campaigns)
+    audit_logs = FakeAuditLogRepository()
+    validate_campaign = ValidateCampaign(campaigns, audit_logs)
 
     with pytest.raises(CampaignValidationError) as exc_info:
-        await validate_campaign(campaign.id, now=NOW)
+        await validate_campaign(campaign.id, actor_id=uuid4(), now=NOW)
 
     assert len(exc_info.value.issues) == 2
     assert campaigns.status_updates == []
+    assert audit_logs.recorded == []
 
 
 @pytest.mark.asyncio
 async def test_validating_an_already_active_campaign_raises_without_re_checking_anything() -> None:
     campaign = _draft_campaign(status=CampaignStatus.ACTIVE)
     campaigns = FakeCampaignRepository(campaign)
-    validate_campaign = ValidateCampaign(campaigns)
+    validate_campaign = ValidateCampaign(campaigns, FakeAuditLogRepository())
 
     with pytest.raises(InvalidCampaignTransitionError):
-        await validate_campaign(campaign.id, now=NOW)
+        await validate_campaign(campaign.id, actor_id=uuid4(), now=NOW)
 
 
 @pytest.mark.asyncio
@@ -94,7 +113,7 @@ async def test_validating_a_paused_campaign_raises_rather_than_resurrecting_it()
     case must not let it in through a different door."""
     campaign = _draft_campaign(status=CampaignStatus.PAUSED)
     campaigns = FakeCampaignRepository(campaign)
-    validate_campaign = ValidateCampaign(campaigns)
+    validate_campaign = ValidateCampaign(campaigns, FakeAuditLogRepository())
 
     with pytest.raises(InvalidCampaignTransitionError):
-        await validate_campaign(campaign.id, now=NOW)
+        await validate_campaign(campaign.id, actor_id=uuid4(), now=NOW)

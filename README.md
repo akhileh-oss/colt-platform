@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 23 — AI Evaluation System: complete.**
+**Milestone 24 — Security Hardening: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -323,6 +323,37 @@ real prompt text to actually change here — no real Anthropic key exists in thi
 Milestone 08 caveat carried into this milestone too) — and asserts the comparison report catches
 exactly that regression. `make eval` (`pytest -m evals`) runs the whole suite.
 
+Milestone 24 hardens the API against `CLAUDE.md` §40's security baseline, closing five concrete
+gaps a focused audit found rather than re-asserting controls already in place (SSRF protection,
+tenant isolation on most tables, and input validation at the API boundary all pre-date this
+milestone). **Rate limiting** (§37, §79) is new: `colt_api.rate_limit.RateLimiter` is a
+Redis-backed fixed-window counter, wired as one `Depends(rate_limit(...))` on exactly one
+route — the deliberately unauthenticated `POST /unsubscribe/{organization_id}/{message_id}`
+webhook, keyed by that pair rather than client IP — because every other route in §79's five
+rate-limited categories is either delegated to Keycloak (authentication), runs inside a Temporal
+workflow rather than synchronously inside an HTTP handler (AI/search), or already has its own
+throttle (`colt_policy.outbound`'s per-campaign send limiter). **Audit completeness** (§48): a
+campaign's `ValidateCampaign` (its first `DRAFT`→`ACTIVE` transition — the only "launch" this
+codebase has), `PauseCampaign`, and `ResumeCampaign` each now write a real `AuditLog` row
+attributed to the acting user, closing the two named gaps (campaign launch/pause) the audit
+found still missing. **Input limits**: `Campaign.name`, `Company.name`, and `Person.full_name`
+now reject a value past 300 characters and `Message.subject` past 500 — each matching its
+backing `String(N)` database column exactly, so the domain layer never claims a looser bound than
+Postgres enforces — while `Company.description` and `Message.body` (both unbounded `Text`
+columns) get their own deliberately tighter, documented application-level caps (5,000 and
+100,000 characters). **`tests/security/`** is a new, dedicated regression suite (`make
+test-security`, requires `make dev` + `make migrate`): an SSRF sentinel over the existing guard's
+core invariant, four cross-tenant-deny tests closing coverage gaps on `approvals`, `lead_scores`,
+`conversation_events`, and `crm_sync_records`, a full `(Role, Permission)` authorization matrix
+exercised through the real `require_permission` dependency chain, a security-headers/redaction
+sentinel, and a real-Redis proof of the rate limiter. Two findings were investigated and
+documented as out of scope rather than silently dropped: **secure file handling** is not
+applicable — no upload or file-serving endpoint exists anywhere in this codebase — and a
+DNS-rebinding window in the SSRF guard (the resolved IP is checked once but the HTTP client
+re-resolves at connection time) is an accepted, explicitly documented residual risk, since closing
+it needs a custom `httpx` transport and `ResearchAgent` — the SSRF guard's only caller — never
+fetches arbitrary user-supplied URLs, only ones a search provider already returned.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -349,7 +380,8 @@ exactly that regression. `make eval` (`pytest -m evals`) runs the whole suite.
 | 21        | Opportunity engine                    | ✅ Complete (see caveat above) |
 | 22        | Analytics + learning loop             | ✅ Complete                    |
 | 23        | AI evaluation system                  | ✅ Complete                    |
-| 24–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 24        | Security hardening                    | ✅ Complete                    |
+| 25–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

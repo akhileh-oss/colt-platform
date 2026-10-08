@@ -45,7 +45,17 @@ services:
   redis:
     <<: *restart
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1", "--requirepass", "${REDIS_PASSWORD}"]
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--save",
+        "60",
+        "1",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+      ]
     volumes:
       - /data/colt/redis:/data
     healthcheck:

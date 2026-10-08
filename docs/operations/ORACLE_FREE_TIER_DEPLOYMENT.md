@@ -10,7 +10,7 @@ gets that architecture to $0/month. This document covers the one that actually c
 ## What this actually is
 
 One Oracle Cloud Infrastructure (OCI) "Always Free" Ampere A1 compute instance — 4 OCPUs, 24 GB
-RAM, the *entire* Always Free Arm compute allowance for one tenancy — running the full stack
+RAM, the _entire_ Always Free Arm compute allowance for one tenancy — running the full stack
 (Postgres, Redis, Temporal, MinIO, Keycloak, the OTel collector, and the `api`/`worker`/`web`
 application containers) as one `docker compose` deployment, the same shape
 `docker-compose.yml` already proves works in local development. Terraform:
@@ -19,16 +19,16 @@ application containers) as one `docker compose` deployment, the same shape
 
 ## What is and isn't genuinely free
 
-| Resource | OCI Always Free covers | Notes |
-| --- | --- | --- |
-| Compute (4 OCPU / 24 GB Ampere A1) | Yes, forever — not a 12-month clock | Capacity is real but finite per region; a fresh signup sometimes hits "Out of host capacity" on A1 and has to retry a different region/time |
-| Boot + block volumes (up to 200 GB total) | Yes | This config uses 50 GB boot + 100 GB data = 150 GB, leaving headroom |
-| Volume backups | Yes, within a modest free count/retention — verify the current limit in the OCI console before relying on long retention | `backup_retention_days` defaults to 7 |
-| Outbound data transfer (10 TB/month) | Yes | Far more than this deployment will use |
-| Reserved public IP | Yes (1 per Always Free compute instance) | Used here so resizing the instance doesn't change DNS |
-| A domain name | **No** | Not an OCI resource; buy one anywhere, or run HTTP-only on the raw IP (`domain_name = ""`) |
-| A managed secrets service | **No** | OCI has no Always Free equivalent of AWS Secrets Manager — see "Secrets" below |
-| A managed load balancer / managed TLS | Not used here | OCI does have a free Flexible Load Balancer (1 instance, 10 Mbps), but this deployment terminates TLS with Caddy directly on the instance instead, to avoid the LB's own TLS-certificate Terraform wiring — a reasonable free upgrade path later, not built here |
+| Resource                                  | OCI Always Free covers                                                                                                   | Notes                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compute (4 OCPU / 24 GB Ampere A1)        | Yes, forever — not a 12-month clock                                                                                      | Capacity is real but finite per region; a fresh signup sometimes hits "Out of host capacity" on A1 and has to retry a different region/time                                                                                                                      |
+| Boot + block volumes (up to 200 GB total) | Yes                                                                                                                      | This config uses 50 GB boot + 100 GB data = 150 GB, leaving headroom                                                                                                                                                                                             |
+| Volume backups                            | Yes, within a modest free count/retention — verify the current limit in the OCI console before relying on long retention | `backup_retention_days` defaults to 7                                                                                                                                                                                                                            |
+| Outbound data transfer (10 TB/month)      | Yes                                                                                                                      | Far more than this deployment will use                                                                                                                                                                                                                           |
+| Reserved public IP                        | Yes (1 per Always Free compute instance)                                                                                 | Used here so resizing the instance doesn't change DNS                                                                                                                                                                                                            |
+| A domain name                             | **No**                                                                                                                   | Not an OCI resource; buy one anywhere, or run HTTP-only on the raw IP (`domain_name = ""`)                                                                                                                                                                       |
+| A managed secrets service                 | **No**                                                                                                                   | OCI has no Always Free equivalent of AWS Secrets Manager — see "Secrets" below                                                                                                                                                                                   |
+| A managed load balancer / managed TLS     | Not used here                                                                                                            | OCI does have a free Flexible Load Balancer (1 instance, 10 Mbps), but this deployment terminates TLS with Caddy directly on the instance instead, to avoid the LB's own TLS-certificate Terraform wiring — a reasonable free upgrade path later, not built here |
 
 **The real trade for $0, stated plainly:** this is one computer. AWS's Fargate+ALB+Multi-AZ
 RDS/Redis design (Milestone 25) survives losing an entire availability zone; this does not
@@ -74,6 +74,7 @@ compose up -d` to apply it, or replace the instance (`terraform taint`/`apply`) 
 
    The `oci` Terraform provider reads this file automatically; nothing in this repository needs
    to know these values.
+
 3. Generate an SSH keypair if you don't already have one: `ssh-keygen -t ed25519`.
 4. Decide on a region. Always Free Ampere A1 capacity is genuinely finite and sometimes
    unavailable in busy regions/times — if `terraform apply` fails with "Out of host capacity",
@@ -146,5 +147,5 @@ terraform destroy
 
 Nothing here costs money even left running indefinitely (within the Always Free limits above),
 so there's no financial urgency to `destroy` — but regions do occasionally fail "Out of host
-capacity" on *re*-creating an A1 instance, so don't destroy and recreate casually if the box is
+capacity" on _re_-creating an A1 instance, so don't destroy and recreate casually if the box is
 otherwise healthy.

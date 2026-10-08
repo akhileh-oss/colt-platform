@@ -16,7 +16,7 @@ required.
 
 ## Status
 
-**Milestone 24 — Security Hardening: complete.**
+**Milestone 25 — Production Infrastructure: complete.**
 
 `make dev` brings up the full local stack — Postgres with pgvector, Redis, Temporal and its UI,
 MinIO, Mailpit, Keycloak and an OpenTelemetry collector — and verifies every service is serving.
@@ -354,6 +354,34 @@ re-resolves at connection time) is an accepted, explicitly documented residual r
 it needs a custom `httpx` transport and `ResearchAgent` — the SSRF guard's only caller — never
 fetches arbitrary user-supplied URLs, only ones a search provider already returned.
 
+Milestone 25 builds the Production Infrastructure (`CLAUDE.md` §53, §68) as real Terraform:
+`infrastructure/terraform/modules/` holds one leaf module per concern — networking (VPC,
+public/private subnets, security groups), database (RDS Postgres with `pgvector`/`pgcrypto`),
+cache (ElastiCache Redis), object storage (S3, the managed equivalent of local MinIO), secrets
+(Secrets Manager, every value a placeholder an operator replaces by hand — CLAUDE.md §53's
+"never store production infrastructure secrets in Git"), compute (ECS Fargate for `api`/`web`/
+`worker`, an ALB, an ADOT collector sidecar in every task so OpenTelemetry tracing survives the
+move off `docker-compose.yml`'s local collector), Temporal (self-hosted on ECS Fargate against
+the same RDS instance, `temporalio/auto-setup`'s own startup mechanism creating its databases —
+this milestone's documented choice over Temporal Cloud, which needs an external account this
+project doesn't have), DNS/TLS (Route53 + ACM), observability (a CloudWatch dashboard),
+alerting (SNS + alarms on RDS CPU/storage/connections, ALB 5xx rate, and ECS task health), and
+backups (an AWS Backup plan with its own documented retention, alerting on a failed backup job —
+§54's required "restore testing" is explicitly Milestone 28's job, not this one's).
+`infrastructure/terraform/environment/` composes every leaf module into one environment;
+`infrastructure/environments/staging/` and `.../production/` are each their own Terraform root
+— separate state, separate backend, separate provider configuration — calling that same
+composition with different sizing, so the two can never silently drift in how the pieces wire
+together, only in how big each one is. **Milestone 25's literal acceptance criterion —
+"staging environment can be created reproducibly from Terraform with no manual undocumented
+infrastructure steps" — could not be proven by an actual `terraform apply`:** this sandbox has
+no real AWS account to provision against, so `plan`/`apply` are `NOT RUN`. What was verified
+instead: `terraform fmt -check` (clean), and `terraform init -backend=false` + `terraform
+validate` for `bootstrap/`, `environments/staging/`, and `environments/production/` (all three
+valid) — proving every module's syntax, type, and reference graph is internally consistent, the
+static half of "reproducible," without the real-infrastructure half this environment cannot
+supply.
+
 | Milestone | Scope                                 | Status                         |
 | --------- | ------------------------------------- | ------------------------------ |
 | 00        | Repository bootstrap                  | ✅ Complete                    |
@@ -381,7 +409,8 @@ fetches arbitrary user-supplied URLs, only ones a search provider already return
 | 22        | Analytics + learning loop             | ✅ Complete                    |
 | 23        | AI evaluation system                  | ✅ Complete                    |
 | 24        | Security hardening                    | ✅ Complete                    |
-| 25–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
+| 25        | Production infrastructure             | ✅ Complete (see caveat above) |
+| 26–30     | See [`CLAUDE.md` §68](./CLAUDE.md)    | Not started                    |
 
 ---
 

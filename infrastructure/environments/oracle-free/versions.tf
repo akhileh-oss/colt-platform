@@ -1,5 +1,8 @@
 terraform {
-  required_version = ">= 1.9"
+  # OCI Cloud Shell (the easiest place to actually run this) ships Terraform 1.5.x — nothing in
+  # this configuration needs anything newer, so the constraint matches what's really required
+  # rather than copying the AWS environment's >= 1.9 out of habit.
+  required_version = ">= 1.5"
 
   required_providers {
     oci = {

@@ -8,7 +8,7 @@ RUN corepack enable
 FROM base AS builder
 WORKDIR /workspace
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/typescript/ packages/typescript/
 RUN pnpm install --frozen-lockfile

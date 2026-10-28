@@ -18,6 +18,11 @@ environments/
   local/          Reserved; the local stack is defined by ../docker-compose.yml
   staging/        Staging — its own Terraform root, own backend, own tfvars
   production/     Production — same shape as staging, HA knobs turned on
+  oracle-free/    $0/month alternative to staging/production, on OCI instead of AWS — see
+                  docs/operations/ORACLE_FREE_TIER_DEPLOYMENT.md. Not a CLAUDE.md milestone.
+terraform/oracle/
+  modules/        Leaf modules for the OCI alternative: network, compute — far fewer than AWS's
+                  because one instance has no NAT/ALB/multi-AZ to configure.
 ```
 
 The local stack is declared in `docker-compose.yml` at the repository root and started with

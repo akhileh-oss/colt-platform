@@ -1,0 +1,60 @@
+# Builds and pushes the same three Dockerfiles `ci.yml` builds for AWS/ECR (Milestone 26) to
+# GitHub Container Registry instead — free, no AWS account needed, and the image source
+# `infrastructure/environments/oracle-free` points at by default. Manual trigger only: unlike
+# `ci.yml`'s `build-images` job, nothing here is gated behind the full test suite passing on
+# `main`, because this workflow exists for a $0 side deployment a repository admin runs
+# deliberately, not as part of the main release pipeline.
+#
+# ghcr.io login needs no repository secret: GITHUB_TOKEN already has `packages: write` once the
+# permission below is granted, scoped to this repository's own GHCR namespace.
+name: Build images (GHCR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish (in addition to the commit SHA)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    name: Build and push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: api
+            dockerfile: apps/api/Dockerfile
+          - service: web
+            dockerfile: apps/web/Dockerfile
+          - service: worker
+            dockerfile: infrastructure/docker/worker/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.service }}:${{ inputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

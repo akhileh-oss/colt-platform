@@ -13,6 +13,11 @@ WORKDIR /workspace
 # whole workspace's dependency graph.
 COPY pyproject.toml uv.lock ./
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
+# colt-api's pyproject.toml declares `readme = "README.md"` — hatchling validates that file
+# exists even when only resolving colt-api's metadata as a dependency (`--no-install-project`
+# skips installing colt-api itself, not resolving it), so it has to be copied here too, not
+# only with the rest of apps/api/ after this layer.
+COPY apps/api/README.md apps/api/README.md
 COPY packages/python/ packages/python/
 RUN uv sync --frozen --no-dev --no-install-project
 

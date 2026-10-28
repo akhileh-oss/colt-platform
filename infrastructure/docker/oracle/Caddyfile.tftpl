@@ -1,0 +1,29 @@
+# Caddy runs on the HOST (not in docker compose) and is the only thing with a public port —
+# it holds 80/443, everything else binds to 127.0.0.1 only. With a domain name, Caddy gets
+# automatic Let's Encrypt HTTPS for free with zero extra configuration. Without one, it serves
+# plain HTTP on the instance's IP — no AWS ACM/Route53 analog is required (or free) here.
+%{ if domain_name != "" }
+${domain_name} {
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle /auth/* {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+%{ else }
+:80 {
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle /auth/* {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+%{ endif }

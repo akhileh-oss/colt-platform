@@ -55,6 +55,9 @@ blob-report/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+# Unlike staging/production's committed tfvars (no secrets — those come from AWS Secrets
+# Manager), oracle-free has no managed secrets service, so its tfvars holds real credentials.
+infrastructure/environments/oracle-free/terraform.tfvars
 
 # ---------------------------------------------------------------------------
 # Editors / OS

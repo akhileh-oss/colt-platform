@@ -1,0 +1,23 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored — it will contain real
+# secrets (extra_env) and must never be committed.
+
+region          = "us-ashburn-1" # pick whichever region actually has Always Free A1 capacity for you
+compartment_id  = "ocid1.tenancy.oc1..REPLACE_ME" # tenancy root OCID is fine
+ssh_public_key  = "ssh-ed25519 AAAA... you@yourhost"
+domain_name     = "" # e.g. "colt.example.com" — leave empty for HTTP-only on the raw IP
+
+api_image    = "ghcr.io/akhileh-oss/colt-platform-api:latest"
+web_image    = "ghcr.io/akhileh-oss/colt-platform-web:latest"
+worker_image = "ghcr.io/akhileh-oss/colt-platform-worker:latest"
+
+extra_env = {
+  ANTHROPIC_API_KEY  = "sk-ant-REPLACE_ME"
+  APP_SECRET_KEY     = "REPLACE_ME_openssl_rand_hex_32"
+  AUTH_CLIENT_ID     = "colt-api"
+  AUTH_CLIENT_SECRET = "REPLACE_ME"
+  AUTH_AUDIENCE      = "colt-api"
+  EMAIL_FROM_ADDRESS = "outbound@example.test"
+  EMAIL_FROM_NAME    = "Colt"
+  # Everything else (CRM_PROVIDER, SEARCH_PROVIDER, FEATURE_* flags, ...) defaults the same way
+  # .env.example does; add keys here only for the ones you're turning on.
+}

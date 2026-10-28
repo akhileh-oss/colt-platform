@@ -1,0 +1,246 @@
+# =============================================================================
+# Colt — Oracle Cloud "Always Free" production stack.
+#
+# Not a CLAUDE.md milestone; a user-requested, $0/month alternative to the AWS-shaped
+# production infrastructure in `infrastructure/terraform/{modules,environment}` (Milestone 25),
+# for anyone who cannot carry AWS's recurring NAT Gateway / ALB / Fargate costs. This is the
+# same `docker compose` shape the repository root's `docker-compose.yml` already proves works
+# in local development, adapted to run as the actual production stack on one Always Free
+# Ampere A1 instance rather than alongside locally-run `make api`/`make web`/`make worker`
+# processes.
+#
+# Every persistent volume below is a BIND MOUNT under /data — the dedicated OCI block volume
+# this instance's Terraform module attaches and backs up (CLAUDE.md §54's backup discipline,
+# ported to OCI's volume-backup-policy mechanism) — never a Docker named volume, so a single
+# volume backup captures every service's data, not just Postgres's.
+#
+# api/web ports bind to 127.0.0.1 only: Caddy, running on the host (not in this compose file),
+# is the only thing that terminates TLS and is reachable from the public internet. Nothing here
+# is exposed directly.
+# =============================================================================
+
+name: colt-production
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *restart
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: colt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: colt
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - /data/colt/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colt -d colt"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    <<: *restart
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--save",
+        "60",
+        "1",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+      ]
+    volumes:
+      - /data/colt/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  temporal:
+    <<: *restart
+    image: temporalio/auto-setup:1.29.3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: colt
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+    healthcheck:
+      test: ["CMD-SHELL", "temporal operator cluster health --address $$(hostname -i):7233"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  temporal-ui:
+    <<: *restart
+    image: temporalio/ui:2.53.3
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: https://${DOMAIN_NAME:-localhost}
+    ports:
+      # Not proxied by Caddy; reach it over an SSH tunnel (`ssh -L 8080:localhost:8080 ...`)
+      # rather than exposing the workflow UI to the public internet.
+      - "127.0.0.1:8080:8080"
+
+  minio:
+    <<: *restart
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - /data/colt/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  minio-init:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/colt-research
+        echo "minio-init: buckets ready"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    restart: "no"
+
+  # Mailpit is a LOCAL-ONLY mail capture tool (CLAUDE.md §6.4) — kept here as the safe default
+  # so this stack sends zero real email out of the box. Flip FEATURE_REAL_EMAIL and point
+  # EMAIL_SMTP_HOST/EMAIL_API_KEY at a real provider once you have one; that is an application
+  # config change, not an infrastructure one, and deliberately out of this module's scope.
+  mailpit:
+    <<: *restart
+    image: axllent/mailpit:latest
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_MAX_MESSAGES: 5000
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  # Production mode (`start`, not `start-dev`): persistent H2 file store under /data rather than
+  # Keycloak's in-memory dev store, so accounts and realm config survive a restart.
+  keycloak:
+    <<: *restart
+    image: quay.io/keycloak/keycloak:26.7.2
+    command: ["start", "--http-enabled=true", "--hostname-strict=false", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_DB: dev-file
+    volumes:
+      - ./keycloak-realm:/opt/keycloak/data/import:ro
+      - /data/colt/keycloak:/opt/keycloak/data/h2
+    healthcheck:
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\"status\": \"UP\"' <&3"
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  otel-collector:
+    <<: *restart
+    image: otel/opentelemetry-collector-contrib:0.159.0
+    command: ["--config=/etc/otel/collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/collector-config.yaml:ro
+
+  api:
+    <<: *restart
+    image: ${API_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://colt:${POSTGRES_PASSWORD}@postgres:5432/colt
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://colt:${POSTGRES_PASSWORD}@postgres:5432/colt
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      TEMPORAL_ADDRESS: temporal:7233
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AUTH_ISSUER_URL: https://${DOMAIN_NAME:-localhost}/auth/realms/colt
+      OBSERVABILITY_OTEL_ENDPOINT: http://otel-collector:4317
+      EMAIL_SMTP_HOST: mailpit
+      EMAIL_SMTP_PORT: "1025"
+      APP_ENV: production
+      APP_BASE_URL: https://${DOMAIN_NAME:-localhost}/api
+      APP_WEB_BASE_URL: https://${DOMAIN_NAME:-localhost}
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    <<: *restart
+    image: ${WORKER_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://colt:${POSTGRES_PASSWORD}@postgres:5432/colt
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      TEMPORAL_ADDRESS: temporal:7233
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      OBSERVABILITY_OTEL_ENDPOINT: http://otel-collector:4317
+      EMAIL_SMTP_HOST: mailpit
+      EMAIL_SMTP_PORT: "1025"
+      APP_ENV: production
+
+  web:
+    <<: *restart
+    image: ${WEB_IMAGE}
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: https://${DOMAIN_NAME:-localhost}/api
+    ports:
+      - "127.0.0.1:3000:3000"

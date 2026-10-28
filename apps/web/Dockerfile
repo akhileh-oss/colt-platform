@@ -19,7 +19,9 @@ RUN pnpm --filter @colt/web build
 FROM node:22-slim AS runtime
 WORKDIR /app
 
-RUN useradd --create-home --uid 1000 colt
+# node:22-slim already ships a built-in UID-1000 user ("node"), so a plain `--uid 1000` here
+# collides and `useradd` fails — 1001 is free.
+RUN useradd --create-home --uid 1001 colt
 # next.config.ts's `output: "standalone"` means only these three paths are needed at runtime —
 # never the full pnpm workspace `node_modules`, whose symlinks don't survive a Docker `COPY`.
 COPY --from=builder --chown=colt:colt /workspace/apps/web/.next/standalone ./

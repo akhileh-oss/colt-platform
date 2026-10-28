@@ -7,9 +7,30 @@
 
 ```bash
 make install    # dependencies
+make dev        # start the local stack and verify it
+make health     # re-check service health at any time
+make logs       # tail service logs
+make down       # stop (volumes preserved)
 make check      # lint, typecheck, test, security
-make dev        # full local stack — Milestone 01
 ```
+
+`make dev` refuses to start if any `FEATURE_REAL_*` flag is enabled in `.env`, so a misconfigured
+local environment fails closed rather than reaching a real provider.
+
+To discard local data entirely and start from scratch:
+
+```bash
+docker compose down -v && make dev
+```
+
+**Service health.** `scripts/dev-health.sh` is the authority, not `docker compose ps`. The OTel
+collector image is distroless and the Temporal UI ships no healthcheck, so neither reports a
+container health status; the script probes both over HTTP from the host. It also checks that the
+`colt-research` bucket exists and that the `colt` Keycloak realm resolves — a service can be up but
+unusable.
+
+**Temporal.** The frontend binds to the container IP rather than loopback, so any in-container
+probe must target `$(hostname -i):7233`.
 
 Local development performs **no real external side effects**: `FEATURE_REAL_EMAIL`,
 `FEATURE_REAL_CRM`, `FEATURE_REAL_CALENDAR` and `FEATURE_REAL_SOCIAL` default to `false`, and email
